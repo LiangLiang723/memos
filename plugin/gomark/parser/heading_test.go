@@ -10,7 +10,7 @@ import (
 func TestHeadingParser(t *testing.T) {
 	tests := []struct {
 		text    string
-		heading *HeadingTokenizer
+		heading *HeadingParser
 	}{
 		{
 			text:    "*Hello world!",
@@ -18,7 +18,7 @@ func TestHeadingParser(t *testing.T) {
 		},
 		{
 			text: "## Hello World!",
-			heading: &HeadingTokenizer{
+			heading: &HeadingParser{
 				Level: 2,
 				ContentTokens: []*tokenizer.Token{
 					{
@@ -38,7 +38,7 @@ func TestHeadingParser(t *testing.T) {
 		},
 		{
 			text: "# # Hello World",
-			heading: &HeadingTokenizer{
+			heading: &HeadingParser{
 				Level: 1,
 				ContentTokens: []*tokenizer.Token{
 					{
@@ -71,7 +71,7 @@ func TestHeadingParser(t *testing.T) {
 		{
 			text: `# 123 
 Hello World!`,
-			heading: &HeadingTokenizer{
+			heading: &HeadingParser{
 				Level: 1,
 				ContentTokens: []*tokenizer.Token{
 					{
@@ -89,7 +89,7 @@ Hello World!`,
 
 	for _, test := range tests {
 		tokens := tokenizer.Tokenize(test.text)
-		headingTokenizer := NewHeadingTokenizer()
-		require.Equal(t, test.heading, headingTokenizer.Match(tokens))
+		heading := NewHeadingParser()
+		require.Equal(t, test.heading, heading.Match(tokens))
 	}
 }
