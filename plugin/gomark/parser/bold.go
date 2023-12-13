@@ -7,10 +7,8 @@ import (
 
 type BoldParser struct{}
 
-var defaultBoldParser = &BoldParser{}
-
 func NewBoldParser() InlineParser {
-	return defaultBoldParser
+	return &BoldParser{}
 }
 
 func (*BoldParser) Match(tokens []*tokenizer.Token) (int, bool) {
@@ -23,7 +21,7 @@ func (*BoldParser) Match(tokens []*tokenizer.Token) (int, bool) {
 		return 0, false
 	}
 	prefixTokenType := prefixTokens[0].Type
-	if prefixTokenType != tokenizer.Star && prefixTokenType != tokenizer.Underline {
+	if prefixTokenType != tokenizer.Asterisk && prefixTokenType != tokenizer.Underline {
 		return 0, false
 	}
 
