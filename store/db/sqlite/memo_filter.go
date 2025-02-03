@@ -12,39 +12,60 @@ import (
 	"github.com/usememos/memos/plugin/filter"
 )
 
-func RestoreExprToSQL(expr *exprv1.Expr) (string, error) {
-	var condition string
+func ConvertExprToSQL(ctx *filter.ConvertContext, expr *exprv1.Expr) error {
 	switch v := expr.ExprKind.(type) {
 	case *exprv1.Expr_CallExpr:
 		switch v.CallExpr.Function {
 		case "_||_", "_&&_":
 			if len(v.CallExpr.Args) != 2 {
-				return "", errors.Errorf("invalid number of arguments for %s", v.CallExpr.Function)
+				return errors.Errorf("invalid number of arguments for %s", v.CallExpr.Function)
 			}
-			left, err := RestoreExprToSQL(v.CallExpr.Args[0])
-			if err != nil {
-				return "", err
+			if _, err := ctx.Buffer.WriteString("("); err != nil {
+				return err
 			}
-			right, err := RestoreExprToSQL(v.CallExpr.Args[1])
-			if err != nil {
-				return "", err
+			if err := ConvertExprToSQL(ctx, v.CallExpr.Args[0]); err != nil {
+				return err
 			}
 			operator := "AND"
 			if v.CallExpr.Function == "_||_" {
 				operator = "OR"
 			}
-			condition = fmt.Sprintf("(%s %s %s)", left, operator, right)
+			if _, err := ctx.Buffer.WriteString(fmt.Sprintf(" %s ", operator)); err != nil {
+				return err
+			}
+			if err := ConvertExprToSQL(ctx, v.CallExpr.Args[1]); err != nil {
+				return err
+			}
+			if _, err := ctx.Buffer.WriteString(")"); err != nil {
+				return err
+			}
+		case "!_":
+			if len(v.CallExpr.Args) != 1 {
+				return errors.Errorf("invalid number of arguments for %s", v.CallExpr.Function)
+			}
+			if _, err := ctx.Buffer.WriteString("NOT ("); err != nil {
+				return err
+			}
+			if err := ConvertExprToSQL(ctx, v.CallExpr.Args[0]); err != nil {
+				return err
+			}
+			if _, err := ctx.Buffer.WriteString(")"); err != nil {
+				return err
+			}
 		case "_==_", "_!=_", "_<_", "_>_", "_<=_", "_>=_":
 			if len(v.CallExpr.Args) != 2 {
-				return "", errors.Errorf("invalid number of arguments for %s", v.CallExpr.Function)
+				return errors.Errorf("invalid number of arguments for %s", v.CallExpr.Function)
 			}
-			identifier := v.CallExpr.Args[0].GetIdentExpr().GetName()
+			identifier, err := filter.GetIdentExprName(v.CallExpr.Args[0])
+			if err != nil {
+				return err
+			}
 			if !slices.Contains([]string{"create_time", "update_time"}, identifier) {
-				return "", errors.Errorf("invalid identifier for %s", v.CallExpr.Function)
+				return errors.Errorf("invalid identifier for %s", v.CallExpr.Function)
 			}
 			value, err := filter.GetConstValue(v.CallExpr.Args[1])
 			if err != nil {
-				return "", err
+				return err
 			}
 			operator := "="
 			switch v.CallExpr.Function {
@@ -65,85 +86,90 @@ func RestoreExprToSQL(expr *exprv1.Expr) (string, error) {
 			if identifier == "create_time" || identifier == "update_time" {
 				timestampStr, ok := value.(string)
 				if !ok {
-					return "", errors.New("invalid timestamp value")
+					return errors.New("invalid timestamp value")
 				}
 				timestamp, err := time.Parse(time.RFC3339, timestampStr)
 				if err != nil {
-					return "", errors.Wrap(err, "failed to parse timestamp")
+					return errors.Wrap(err, "failed to parse timestamp")
 				}
 
+				var factor string
 				if identifier == "create_time" {
-					condition = fmt.Sprintf("`memo`.`created_ts` %s %d", operator, timestamp.Unix())
+					factor = "`memo`.`created_ts`"
 				} else if identifier == "update_time" {
-					condition = fmt.Sprintf("`memo`.`updated_ts` %s %d", operator, timestamp.Unix())
+					factor = "`memo`.`updated_ts`"
 				}
+				if _, err := ctx.Buffer.WriteString(fmt.Sprintf("%s %s ?", factor, operator)); err != nil {
+					return err
+				}
+				ctx.Args = append(ctx.Args, timestamp.Unix())
 			}
 		case "@in":
 			if len(v.CallExpr.Args) != 2 {
-				return "", errors.Errorf("invalid number of arguments for %s", v.CallExpr.Function)
+				return errors.Errorf("invalid number of arguments for %s", v.CallExpr.Function)
 			}
-			identifier := v.CallExpr.Args[0].GetIdentExpr().GetName()
+			identifier, err := filter.GetIdentExprName(v.CallExpr.Args[0])
+			if err != nil {
+				return err
+			}
 			if !slices.Contains([]string{"tag", "visibility"}, identifier) {
-				return "", errors.Errorf("invalid identifier for %s", v.CallExpr.Function)
+				return errors.Errorf("invalid identifier for %s", v.CallExpr.Function)
 			}
 
 			values := []any{}
 			for _, element := range v.CallExpr.Args[1].GetListExpr().Elements {
 				value, err := filter.GetConstValue(element)
 				if err != nil {
-					return "", err
+					return err
 				}
 				values = append(values, value)
 			}
 			if identifier == "tag" {
 				subcodition := []string{}
+				args := []any{}
 				for _, v := range values {
-					subcodition = append(subcodition, fmt.Sprintf("JSON_EXTRACT(`memo`.`payload`, '$.tags') LIKE %s", fmt.Sprintf(`'%%"%s"%%'`, v)))
+					subcodition, args = append(subcodition, "JSON_EXTRACT(`memo`.`payload`, '$.tags') LIKE ?"), append(args, fmt.Sprintf(`%%"%s"%%`, v))
 				}
 				if len(subcodition) == 1 {
-					condition = subcodition[0]
+					if _, err := ctx.Buffer.WriteString(subcodition[0]); err != nil {
+						return err
+					}
 				} else {
-					condition = fmt.Sprintf("(%s)", strings.Join(subcodition, " OR "))
+					if _, err := ctx.Buffer.WriteString(fmt.Sprintf("(%s)", strings.Join(subcodition, " OR "))); err != nil {
+						return err
+					}
 				}
+				ctx.Args = append(ctx.Args, args...)
 			} else if identifier == "visibility" {
-				vs := []string{}
-				for _, v := range values {
-					vs = append(vs, fmt.Sprintf(`"%s"`, v))
+				placeholder := []string{}
+				for range values {
+					placeholder = append(placeholder, "?")
 				}
-				if len(vs) == 1 {
-					condition = fmt.Sprintf("`memo`.`visibility` = %s", vs[0])
-				} else {
-					condition = fmt.Sprintf("`memo`.`visibility` IN (%s)", strings.Join(vs, ","))
+				if _, err := ctx.Buffer.WriteString(fmt.Sprintf("`memo`.`visibility` IN (%s)", strings.Join(placeholder, ","))); err != nil {
+					return err
 				}
+				ctx.Args = append(ctx.Args, values...)
 			}
 		case "contains":
 			if len(v.CallExpr.Args) != 1 {
-				return "", errors.Errorf("invalid number of arguments for %s", v.CallExpr.Function)
+				return errors.Errorf("invalid number of arguments for %s", v.CallExpr.Function)
 			}
-			identifier, err := RestoreExprToSQL(v.CallExpr.Target)
+			identifier, err := filter.GetIdentExprName(v.CallExpr.Target)
 			if err != nil {
-				return "", err
+				return err
 			}
 			if identifier != "content" {
-				return "", errors.Errorf("invalid identifier for %s", v.CallExpr.Function)
+				return errors.Errorf("invalid identifier for %s", v.CallExpr.Function)
 			}
 			arg, err := filter.GetConstValue(v.CallExpr.Args[0])
 			if err != nil {
-				return "", err
+				return err
 			}
-			condition = fmt.Sprintf("`memo`.`content` LIKE %s", fmt.Sprintf(`'%%%s%%'`, arg))
-		case "!_":
-			if len(v.CallExpr.Args) != 1 {
-				return "", errors.Errorf("invalid number of arguments for %s", v.CallExpr.Function)
+			if _, err := ctx.Buffer.WriteString("`memo`.`content` LIKE ?"); err != nil {
+				return err
 			}
-			arg, err := RestoreExprToSQL(v.CallExpr.Args[0])
-			if err != nil {
-				return "", err
-			}
-			condition = fmt.Sprintf("NOT (%s)", arg)
+			ctx.Args = append(ctx.Args, fmt.Sprintf("%%%s%%", arg))
 		}
-	case *exprv1.Expr_IdentExpr:
-		return v.IdentExpr.GetName(), nil
 	}
-	return condition, nil
+	return nil
 }
