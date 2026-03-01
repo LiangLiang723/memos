@@ -39,7 +39,9 @@ const RelationItemCard: FC<{
 };
 
 const RelationList: FC<RelationListProps> = ({ relations, onRelationsChange, parentPage, memoName }) => {
-  const referenceRelations = relations.filter((r) => r.type === MemoRelation_Type.REFERENCE && (!memoName || !r.memo?.name || r.memo.name === memoName));
+  const referenceRelations = relations.filter(
+    (r) => r.type === MemoRelation_Type.REFERENCE && (!memoName || !r.memo?.name || r.memo.name === memoName),
+  );
   const [fetchedMemos, setFetchedMemos] = useState<Record<string, MemoRelation_Memo>>({});
 
   useEffect(() => {
