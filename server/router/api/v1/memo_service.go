@@ -625,6 +625,10 @@ func (s *APIV1Service) CreateMemoComment(ctx context.Context, request *v1pb.Crea
 		}
 	}
 
+	if err := s.DispatchMemoCommentCreatedWebhook(ctx, memoComment, relatedMemo.CreatorID); err != nil {
+		slog.Warn("Failed to dispatch memo comment created webhook", slog.Any("err", err))
+	}
+
 	return memoComment, nil
 }
 
@@ -743,6 +747,24 @@ func (s *APIV1Service) DispatchMemoUpdatedWebhook(ctx context.Context, memo *v1p
 // DispatchMemoDeletedWebhook dispatches webhook when memo is deleted.
 func (s *APIV1Service) DispatchMemoDeletedWebhook(ctx context.Context, memo *v1pb.Memo) error {
 	return s.dispatchMemoRelatedWebhook(ctx, memo, "memos.memo.deleted")
+}
+
+// DispatchMemoCommentCreatedWebhook dispatches webhook to the related memo owner when a comment is created.
+func (s *APIV1Service) DispatchMemoCommentCreatedWebhook(ctx context.Context, commentMemo *v1pb.Memo, relatedMemoCreatorID int32) error {
+	webhooks, err := s.Store.GetUserWebhooks(ctx, relatedMemoCreatorID)
+	if err != nil {
+		return err
+	}
+	for _, hook := range webhooks {
+		payload, err := convertMemoToWebhookPayload(commentMemo)
+		if err != nil {
+			return errors.Wrap(err, "failed to convert memo to webhook payload")
+		}
+		payload.ActivityType = "memos.memo.comment.created"
+		payload.URL = hook.Url
+		webhook.PostAsync(payload)
+	}
+	return nil
 }
 
 func (s *APIV1Service) dispatchMemoRelatedWebhook(ctx context.Context, memo *v1pb.Memo, activityType string) error {
