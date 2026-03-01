@@ -13,6 +13,10 @@ interface Props {
   parentPage?: string;
 }
 
+const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+  <p className="text-xs font-medium text-muted-foreground/50 uppercase tracking-wider">{children}</p>
+);
+
 const MemoDetailSidebar = ({ memo, className, parentPage }: Props) => {
   const t = useTranslate();
   const property = create(Memo_PropertySchema, memo.property || {});
@@ -20,76 +24,76 @@ const MemoDetailSidebar = ({ memo, className, parentPage }: Props) => {
   const hasReferenceRelations = memo.relations.some((r) => r.type === MemoRelation_Type.REFERENCE);
 
   return (
-    <aside className={cn("relative w-full h-auto max-h-screen overflow-auto flex flex-col justify-start items-start", className)}>
-      <div className="flex flex-col justify-start items-start w-full gap-4 h-auto shrink-0 flex-nowrap">
-        {hasReferenceRelations && (
+    <aside className={cn("relative w-full h-auto max-h-screen overflow-auto flex flex-col gap-5", className)}>
+      {hasReferenceRelations && (
+        <div className="w-full space-y-2">
+          <div className="flex items-center gap-1.5">
+            <SectionLabel>{t("common.relations")}</SectionLabel>
+            <span className="text-xs text-muted-foreground/30">(Beta)</span>
+          </div>
           <div className="relative w-full h-36 border border-border rounded-lg bg-muted overflow-hidden">
             <MemoRelationForceGraph className="w-full h-full" memo={memo} parentPage={parentPage} />
-            <div className="absolute top-2 left-2 text-xs text-muted-foreground/60 font-medium gap-1 flex flex-row items-center">
-              <span>{t("common.relations")}</span>
-              <span className="text-xs opacity-60">(Beta)</span>
-            </div>
           </div>
-        )}
-
-        <div className="w-full space-y-1">
-          <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wide px-1">{t("common.created-at")}</p>
-          <p className="text-sm text-muted-foreground px-1">{memo.createTime ? timestampDate(memo.createTime).toLocaleString() : "-"}</p>
         </div>
+      )}
 
-        {!isEqual(memo.createTime, memo.updateTime) && (
-          <div className="w-full space-y-1">
-            <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wide px-1">{t("common.last-updated-at")}</p>
-            <p className="text-sm text-muted-foreground px-1">{memo.updateTime ? timestampDate(memo.updateTime).toLocaleString() : "-"}</p>
-          </div>
-        )}
-
-        {hasSpecialProperty && (
-          <div className="w-full space-y-2">
-            <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wide px-1">{t("common.properties")}</p>
-            <div className="w-full flex flex-row justify-start items-center gap-2 flex-wrap px-1">
-              {property.hasLink && (
-                <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-muted/50 border border-border/50 rounded-md text-xs text-muted-foreground">
-                  <LinkIcon className="w-3.5 h-3.5" />
-                  <span>{t("memo.links")}</span>
-                </div>
-              )}
-              {property.hasTaskList && (
-                <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-muted/50 border border-border/50 rounded-md text-xs text-muted-foreground">
-                  <CheckCircleIcon className="w-3.5 h-3.5" />
-                  <span>{t("memo.to-do")}</span>
-                </div>
-              )}
-              {property.hasCode && (
-                <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-muted/50 border border-border/50 rounded-md text-xs text-muted-foreground">
-                  <Code2Icon className="w-3.5 h-3.5" />
-                  <span>{t("memo.code")}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {memo.tags.length > 0 && (
-          <div className="w-full space-y-2">
-            <div className="flex flex-row justify-start items-center gap-1.5 px-1">
-              <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wide">{t("common.tags")}</p>
-              <span className="text-xs text-muted-foreground/40">({memo.tags.length})</span>
-            </div>
-            <div className="w-full flex flex-row justify-start items-center flex-wrap gap-1.5 px-1">
-              {memo.tags.map((tag) => (
-                <div
-                  key={tag}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-muted/50 border border-border/50 rounded-md text-xs text-muted-foreground hover:bg-muted transition-colors cursor-pointer group"
-                >
-                  <HashIcon className="w-3 h-3 opacity-40 group-hover:opacity-60 transition-opacity" />
-                  <span className="opacity-80 group-hover:opacity-100 transition-opacity">{tag}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+      <div className="w-full space-y-1">
+        <SectionLabel>{t("common.created-at")}</SectionLabel>
+        <p className="text-sm text-foreground/70">{memo.createTime ? timestampDate(memo.createTime).toLocaleString() : "—"}</p>
       </div>
+
+      {!isEqual(memo.createTime, memo.updateTime) && (
+        <div className="w-full space-y-1">
+          <SectionLabel>{t("common.last-updated-at")}</SectionLabel>
+          <p className="text-sm text-foreground/70">{memo.updateTime ? timestampDate(memo.updateTime).toLocaleString() : "—"}</p>
+        </div>
+      )}
+
+      {hasSpecialProperty && (
+        <div className="w-full space-y-2">
+          <SectionLabel>{t("common.properties")}</SectionLabel>
+          <div className="flex flex-wrap gap-1.5">
+            {property.hasLink && (
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/60 bg-muted/60 text-xs text-muted-foreground">
+                <LinkIcon className="w-3.5 h-3.5" />
+                {t("memo.links")}
+              </span>
+            )}
+            {property.hasTaskList && (
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/60 bg-muted/60 text-xs text-muted-foreground">
+                <CheckCircleIcon className="w-3.5 h-3.5" />
+                {t("memo.to-do")}
+              </span>
+            )}
+            {property.hasCode && (
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/60 bg-muted/60 text-xs text-muted-foreground">
+                <Code2Icon className="w-3.5 h-3.5" />
+                {t("memo.code")}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {memo.tags.length > 0 && (
+        <div className="w-full space-y-2">
+          <div className="flex items-center gap-1.5">
+            <SectionLabel>{t("common.tags")}</SectionLabel>
+            <span className="text-xs text-muted-foreground/30">({memo.tags.length})</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {memo.tags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 px-1 rounded-md border border-border/60 bg-muted/60 text-sm text-muted-foreground hover:bg-muted hover:text-foreground/80 transition-colors cursor-pointer"
+              >
+                <HashIcon className="w-3 h-3 opacity-50" />
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </aside>
   );
 };
