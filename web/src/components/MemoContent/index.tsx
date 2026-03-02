@@ -51,7 +51,7 @@ const MemoContent = (props: MemoContentProps) => {
       >
         <ReactMarkdown
           remarkPlugins={[remarkDisableSetext, remarkMath, remarkGfm, remarkBreaks, remarkTag, remarkPreserveType]}
-          rehypePlugins={[rehypeRaw, [rehypeSanitize, SANITIZE_SCHEMA], rehypeKatex]}
+          rehypePlugins={[rehypeRaw, [rehypeSanitize, SANITIZE_SCHEMA], [rehypeKatex, { throwOnError: false, strict: false }]]}
           components={{
             // Child components consume from MemoViewContext directly
             input: ((inputProps: React.ComponentProps<"input"> & { node?: Element }) => {
