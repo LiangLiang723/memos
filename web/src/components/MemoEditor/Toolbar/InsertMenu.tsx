@@ -1,12 +1,17 @@
+import { create } from "@bufbuild/protobuf";
+import * as exifr from "exifr";
 import { LatLng } from "leaflet";
 import { uniqBy } from "lodash-es";
 import { FileIcon, ImageIcon, LinkIcon, LoaderIcon, MapPinIcon, Maximize2Icon, MoreHorizontal } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDebounce } from "react-use";
-import { useReverseGeocoding } from "@/components/map";
+import { useLocationCandidates, useReverseGeocoding } from "@/components/map";
+import { resolveLocationLabel } from "@/components/map/geocoding";
+import { getImageLocationCandidateDistanceMeters, getMapSettingWithDefaults } from "@/components/map/map-setting";
+import { useInstance } from "@/contexts/InstanceContext";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import type { MemoRelation } from "@/types/proto/api/v1/memo_service_pb";
+import { LocationSchema, type MemoRelation } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import { LinkMemoDialog, LocationDialog } from "../components";
 import { useFileUpload, useLinkMemo, useLocation } from "../hooks";
@@ -16,6 +21,9 @@ import type { LocalFile } from "../types/attachment";
 
 const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
   const t = useTranslate();
+  const { memoRelatedSetting } = useInstance();
+  const mapSetting = getMapSettingWithDefaults(memoRelatedSetting.mapSetting);
+  const imageCandidateDistanceMeters = getImageLocationCandidateDistanceMeters();
   const { state, actions, dispatch } = useEditorContext();
   const { location: initialLocation, onLocationChange, onToggleFocusMode, isUploading: isUploadingProp } = props;
 
@@ -49,12 +57,161 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
   );
 
   const { data: displayName } = useReverseGeocoding(debouncedPosition?.lat, debouncedPosition?.lng);
+  const { data: locationCandidates = [], isLoading: isGeocodingLoading } = useLocationCandidates(
+    debouncedPosition?.lat,
+    debouncedPosition?.lng,
+  );
+  const [imageLocationPoints, setImageLocationPoints] = useState<Array<{ lat: number; lng: number; label: string }>>([]);
+  const [activeSeed, setActiveSeed] = useState<{ label: string; kind: "image" | "current"; imageIndex?: number } | undefined>(undefined);
 
   useEffect(() => {
-    if (displayName) {
+    let cancelled = false;
+
+    const toNumber = (value: unknown): number | undefined => {
+      if (typeof value === "number" && Number.isFinite(value)) return value;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    };
+
+    const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+    const distanceMeters = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+      const earthRadius = 6371000;
+      const deltaLat = toRadians(b.lat - a.lat);
+      const deltaLng = toRadians(b.lng - a.lng);
+      const sinLat = Math.sin(deltaLat / 2);
+      const sinLng = Math.sin(deltaLng / 2);
+      const h = sinLat * sinLat + Math.cos(toRadians(a.lat)) * Math.cos(toRadians(b.lat)) * sinLng * sinLng;
+      return 2 * earthRadius * Math.asin(Math.sqrt(h));
+    };
+
+    const loadImageLocationPoints = async () => {
+      if (state.localFiles.length === 0) {
+        setImageLocationPoints([]);
+        return;
+      }
+
+      const points: Array<{ lat: number; lng: number; label: string }> = [];
+      const minDistanceMeters = imageCandidateDistanceMeters;
+
+      for (const localFile of state.localFiles) {
+        const file = localFile.file;
+        if (!file.type.startsWith("image/")) {
+          continue;
+        }
+
+        try {
+          const exifData = (await exifr.parse(file, { gps: true })) as Record<string, unknown> | null;
+          const lat = toNumber(exifData?.latitude ?? exifData?.GPSLatitude);
+          const lng = toNumber(exifData?.longitude ?? exifData?.GPSLongitude);
+          const valid = lat !== undefined && lng !== undefined && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+
+          if (!valid) {
+            continue;
+          }
+
+          const shouldAdd = points.every((point) => distanceMeters(point, { lat, lng }) > minDistanceMeters);
+          if (!shouldAdd) {
+            continue;
+          }
+
+          const fallbackLabel = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+          let label = fallbackLabel;
+          try {
+            label = await resolveLocationLabel({
+              lat,
+              lng,
+              provider: mapSetting.provider,
+              amapApiKey: mapSetting.amapApiKey,
+              amapSecurityKey: mapSetting.amapSecurityKey,
+              fallbackLabel,
+            });
+          } catch {
+            label = fallbackLabel;
+          }
+
+          points.push({ lat, lng, label });
+        } catch {
+          // Ignore files without readable EXIF data.
+        }
+      }
+
+      if (!cancelled) {
+        setImageLocationPoints(points);
+      }
+    };
+
+    void loadImageLocationPoints();
+    return () => {
+      cancelled = true;
+    };
+  }, [imageCandidateDistanceMeters, mapSetting.amapApiKey, mapSetting.amapSecurityKey, mapSetting.provider, state.localFiles]);
+
+  useEffect(() => {
+    const firstImagePoint = imageLocationPoints[0];
+    if (!firstImagePoint) {
+      return;
+    }
+    if (initialLocation || state.metadata.location) {
+      return;
+    }
+
+    onLocationChange(
+      create(LocationSchema, {
+        latitude: firstImagePoint.lat,
+        longitude: firstImagePoint.lng,
+        placeholder: firstImagePoint.label,
+      }),
+    );
+  }, [imageLocationPoints, initialLocation, onLocationChange, state.metadata.location]);
+
+  const mergedCandidates = useMemo(() => {
+    const seen = new Set<string>();
+    const output: string[] = [];
+
+    const pushCandidate = (value: string | undefined) => {
+      const normalized = value?.trim();
+      if (!normalized || seen.has(normalized)) {
+        return;
+      }
+      seen.add(normalized);
+      output.push(normalized);
+    };
+
+    if (activeSeed?.label) {
+      // Required order: seed label first, then nearby alternatives.
+      pushCandidate(activeSeed.label);
+      locationCandidates.forEach((candidate) => pushCandidate(candidate));
+      return output.slice(0, 5);
+    }
+
+    pushCandidate(location.state.placeholder);
+    imageLocationPoints.forEach((point) => pushCandidate(point.label));
+    locationCandidates.forEach((candidate) => pushCandidate(candidate));
+
+    return output.slice(0, 6);
+  }, [activeSeed, imageLocationPoints, location.state.placeholder, locationCandidates]);
+
+  useEffect(() => {
+    if (locationDialogOpen && imageLocationPoints.length > 0 && !activeSeed) {
+      const firstPoint = imageLocationPoints[0];
+      location.handlePositionChange(new LatLng(firstPoint.lat, firstPoint.lng));
+      location.setPlaceholder(firstPoint.label);
+      setActiveSeed({ label: firstPoint.label, kind: "image", imageIndex: 0 });
+      return;
+    }
+
+    if (!location.state.placeholder.trim() && imageLocationPoints[0]?.label) {
+      location.setPlaceholder(imageLocationPoints[0].label);
+      return;
+    }
+    if (!location.state.placeholder.trim() && locationCandidates[0]) {
+      location.setPlaceholder(locationCandidates[0]);
+      return;
+    }
+    if (!location.state.placeholder.trim() && displayName) {
       location.setPlaceholder(displayName);
     }
-  }, [displayName]);
+  }, [activeSeed, displayName, imageLocationPoints, location, location.state.placeholder, locationCandidates, locationDialogOpen]);
 
   const isUploading = selectingFlag || isUploadingProp;
 
@@ -63,6 +220,11 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
   }, []);
 
   const handleLocationClick = useCallback(() => {
+    if (initialLocation && !location.state.position) {
+      location.restoreInitial();
+    }
+
+    setActiveSeed(undefined);
     setLocationDialogOpen(true);
     if (!initialLocation && !location.locationInitialized) {
       if (navigator.geolocation) {
@@ -87,16 +249,67 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
   }, [location, onLocationChange]);
 
   const handleLocationCancel = useCallback(() => {
+    setActiveSeed(undefined);
     location.reset();
     setLocationDialogOpen(false);
   }, [location]);
 
   const handlePositionChange = useCallback(
     (position: LatLng) => {
+      setActiveSeed(undefined);
       location.handlePositionChange(position);
     },
     [location],
   );
+
+  const handleSelectImageLocation = useCallback(
+    (index: number) => {
+      const point = imageLocationPoints[index];
+      if (!point) {
+        return;
+      }
+
+      location.handlePositionChange(new LatLng(point.lat, point.lng));
+      location.setPlaceholder(point.label);
+      setActiveSeed({ label: point.label, kind: "image", imageIndex: index });
+    },
+    [imageLocationPoints, location],
+  );
+
+  const handleUseCurrentLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const fallbackLabel = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        let label = fallbackLabel;
+
+        try {
+          label = await resolveLocationLabel({
+            lat,
+            lng,
+            provider: mapSetting.provider,
+            amapApiKey: mapSetting.amapApiKey,
+            amapSecurityKey: mapSetting.amapSecurityKey,
+            fallbackLabel,
+          });
+        } catch {
+          label = fallbackLabel;
+        }
+
+        location.handlePositionChange(new LatLng(lat, lng));
+        location.setPlaceholder(label);
+        setActiveSeed({ label, kind: "current" });
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+      },
+    );
+  }, [location, mapSetting.amapApiKey, mapSetting.amapSecurityKey, mapSetting.provider]);
 
   const handleToggleFocusMode = useCallback(() => {
     onToggleFocusMode?.();
@@ -232,6 +445,12 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
         onPlaceholderChange={location.setPlaceholder}
         onCancel={handleLocationCancel}
         onConfirm={handleLocationConfirm}
+        candidates={mergedCandidates}
+        isGeocodingLoading={isGeocodingLoading}
+        imageLocationLabels={imageLocationPoints.map((point) => point.label)}
+        activeImageLocationIndex={activeSeed?.kind === "image" ? activeSeed.imageIndex : undefined}
+        onSelectImageLocation={handleSelectImageLocation}
+        onUseCurrentLocation={handleUseCurrentLocation}
       />
     </>
   );

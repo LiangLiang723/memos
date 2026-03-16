@@ -6,6 +6,7 @@ import RelationCard from "@/components/MemoView/components/metadata/RelationCard
 import { memoServiceClient } from "@/connect";
 import type { MemoRelation } from "@/types/proto/api/v1/memo_service_pb";
 import { MemoRelation_Memo, MemoRelation_MemoSchema, MemoRelation_Type } from "@/types/proto/api/v1/memo_service_pb";
+import { useTranslate } from "@/utils/i18n";
 
 interface RelationListProps {
   relations: MemoRelation[];
@@ -19,6 +20,7 @@ const RelationItemCard: FC<{
   onRemove?: () => void;
   parentPage?: string;
 }> = ({ memo, onRemove, parentPage }) => {
+  const t = useTranslate();
   return (
     <div className="group relative flex items-center justify-between w-full rounded hover:bg-accent/20 transition-colors">
       <RelationCard memo={memo!} parentPage={parentPage} className="flex-1 hover:bg-transparent" />
@@ -28,8 +30,8 @@ const RelationItemCard: FC<{
           type="button"
           onClick={onRemove}
           className="p-1 mr-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 active:bg-destructive/10 transition-all touch-manipulation"
-          title="Remove"
-          aria-label="Remove relation"
+          title={t("common.remove")}
+          aria-label={t("common.remove")}
         >
           <XIcon className="w-3 h-3 text-muted-foreground hover:text-destructive" />
         </button>

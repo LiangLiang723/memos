@@ -3,6 +3,7 @@ import type { FC } from "react";
 import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { formatFileSize, getFileTypeLabel } from "@/utils/format";
+import { useTranslate } from "@/utils/i18n";
 import type { LocalFile } from "../types/attachment";
 import { toAttachmentItems } from "../types/attachment";
 
@@ -21,6 +22,7 @@ const AttachmentItemCard: FC<{
   canMoveUp?: boolean;
   canMoveDown?: boolean;
 }> = ({ item, onRemove, onMoveUp, onMoveDown, canMoveUp = true, canMoveDown = true }) => {
+  const t = useTranslate();
   const { category, filename, thumbnailUrl, mimeType, size } = item;
   const fileTypeLabel = getFileTypeLabel(mimeType);
   const fileSizeLabel = size ? formatFileSize(size) : undefined;
@@ -89,8 +91,8 @@ const AttachmentItemCard: FC<{
             type="button"
             onClick={onRemove}
             className="p-0.5 rounded hover:bg-destructive/10 active:bg-destructive/10 transition-colors ml-0.5 touch-manipulation"
-            title="Remove"
-            aria-label="Remove attachment"
+            title={t("common.remove")}
+            aria-label={t("common.remove")}
           >
             <XIcon className="w-3 h-3 text-muted-foreground hover:text-destructive" />
           </button>

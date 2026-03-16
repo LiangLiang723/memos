@@ -5,6 +5,9 @@ import {
   InstanceSetting_MemoRelatedSetting_MapSettingSchema,
 } from "@/types/proto/api/v1/instance_service_pb";
 
+export const IMAGE_LOCATION_CANDIDATE_DISTANCE_STORAGE_KEY = "memos.image-location-candidate-distance-meters";
+export const DEFAULT_IMAGE_LOCATION_CANDIDATE_DISTANCE_METERS = 500;
+
 export const getMapSettingWithDefaults = (
   mapSetting?: InstanceSetting_MemoRelatedSetting_MapSetting,
 ): InstanceSetting_MemoRelatedSetting_MapSetting => {
@@ -34,4 +37,23 @@ export const buildExternalMapUrl = (
     return `https://uri.amap.com/marker?position=${lng},${lat}`;
   }
   return `https://www.google.com/maps?q=${lat},${lng}`;
+};
+
+export const getImageLocationCandidateDistanceMeters = (): number => {
+  if (typeof window === "undefined") {
+    return DEFAULT_IMAGE_LOCATION_CANDIDATE_DISTANCE_METERS;
+  }
+
+  const value = Number.parseInt(window.localStorage.getItem(IMAGE_LOCATION_CANDIDATE_DISTANCE_STORAGE_KEY) ?? "", 10);
+  if (!Number.isFinite(value) || value <= 0) {
+    return DEFAULT_IMAGE_LOCATION_CANDIDATE_DISTANCE_METERS;
+  }
+  return value;
+};
+
+export const setImageLocationCandidateDistanceMeters = (value: number): void => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.setItem(IMAGE_LOCATION_CANDIDATE_DISTANCE_STORAGE_KEY, String(value));
 };

@@ -1,17 +1,25 @@
 import { create } from "@bufbuild/protobuf";
 import { LatLng } from "leaflet";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Location, LocationSchema } from "@/types/proto/api/v1/memo_service_pb";
 import { LocationState } from "../types/insert-menu";
 
+const createLocationState = (location?: Location): LocationState => ({
+  placeholder: location?.placeholder || "",
+  position: location ? new LatLng(location.latitude, location.longitude) : undefined,
+  latInput: location ? String(location.latitude) : "",
+  lngInput: location ? String(location.longitude) : "",
+});
+
 export const useLocation = (initialLocation?: Location) => {
   const [locationInitialized, setLocationInitialized] = useState(false);
-  const [state, setState] = useState<LocationState>({
-    placeholder: initialLocation?.placeholder || "",
-    position: initialLocation ? new LatLng(initialLocation.latitude, initialLocation.longitude) : undefined,
-    latInput: initialLocation ? String(initialLocation.latitude) : "",
-    lngInput: initialLocation ? String(initialLocation.longitude) : "",
-  });
+  const [state, setState] = useState<LocationState>(() => createLocationState(initialLocation));
+
+  useEffect(() => {
+    if (!locationInitialized) {
+      setState(createLocationState(initialLocation));
+    }
+  }, [initialLocation, locationInitialized]);
 
   const updatePosition = (position?: LatLng) => {
     setState((prev) => ({
@@ -41,12 +49,12 @@ export const useLocation = (initialLocation?: Location) => {
   };
 
   const reset = () => {
-    setState({
-      placeholder: "",
-      position: undefined,
-      latInput: "",
-      lngInput: "",
-    });
+    setState(createLocationState(initialLocation));
+    setLocationInitialized(false);
+  };
+
+  const restoreInitial = () => {
+    setState(createLocationState(initialLocation));
     setLocationInitialized(false);
   };
 
@@ -68,6 +76,7 @@ export const useLocation = (initialLocation?: Location) => {
     updateCoordinate,
     setPlaceholder,
     reset,
+    restoreInitial,
     getLocation,
   };
 };

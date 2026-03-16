@@ -5,12 +5,22 @@
 interface InstanceConfig {
   memoRelatedSetting: {
     disallowPublicVisibility: boolean;
+    mapSetting: {
+      provider: number;
+      amapApiKey: string;
+      amapSecurityKey: string;
+    };
   };
 }
 
 let instanceConfig: InstanceConfig = {
   memoRelatedSetting: {
     disallowPublicVisibility: false,
+    mapSetting: {
+      provider: 0,
+      amapApiKey: "",
+      amapSecurityKey: "",
+    },
   },
 };
 

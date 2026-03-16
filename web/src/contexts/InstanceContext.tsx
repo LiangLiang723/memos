@@ -22,6 +22,19 @@ const buildInstanceSettingName = (key: InstanceSetting_Key): string => {
   return `${instanceSettingNamePrefix}${keyName}`;
 };
 
+const syncMemoRelatedConfig = (setting: InstanceSetting_MemoRelatedSetting) => {
+  updateInstanceConfig({
+    memoRelatedSetting: {
+      disallowPublicVisibility: setting.disallowPublicVisibility,
+      mapSetting: {
+        provider: setting.mapSetting?.provider ?? 0,
+        amapApiKey: setting.mapSetting?.amapApiKey ?? "",
+        amapSecurityKey: setting.mapSetting?.amapSecurityKey ?? "",
+      },
+    },
+  });
+};
+
 interface InstanceState {
   profile: InstanceProfile;
   settings: InstanceSetting[];
@@ -90,11 +103,7 @@ export function InstanceProvider({ children }: { children: ReactNode }) {
 
       // Update global config for non-React code (like connect.ts interceptors)
       if (memoRelatedSettingResponse.value.case === "memoRelatedSetting") {
-        updateInstanceConfig({
-          memoRelatedSetting: {
-            disallowPublicVisibility: memoRelatedSettingResponse.value.value.disallowPublicVisibility,
-          },
-        });
+        syncMemoRelatedConfig(memoRelatedSettingResponse.value.value);
       }
 
       setState({
@@ -118,6 +127,11 @@ export function InstanceProvider({ children }: { children: ReactNode }) {
     const setting = await instanceServiceClient.getInstanceSetting({
       name: buildInstanceSettingName(key),
     });
+
+    if (setting.value.case === "memoRelatedSetting") {
+      syncMemoRelatedConfig(setting.value.value);
+    }
+
     setState((prev) => ({
       ...prev,
       settings: [...prev.settings.filter((s) => s.name !== setting.name), setting],
@@ -126,6 +140,11 @@ export function InstanceProvider({ children }: { children: ReactNode }) {
 
   const updateSetting = useCallback(async (setting: InstanceSetting) => {
     await instanceServiceClient.updateInstanceSetting({ setting });
+
+    if (setting.value.case === "memoRelatedSetting") {
+      syncMemoRelatedConfig(setting.value.value);
+    }
+
     setState((prev) => ({
       ...prev,
       settings: [...prev.settings.filter((s) => s.name !== setting.name), setting],

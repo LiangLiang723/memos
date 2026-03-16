@@ -36,6 +36,7 @@ const Setting = lazyWithReload(() => import("@/pages/Setting"));
 const SignIn = lazyWithReload(() => import("@/pages/SignIn"));
 const SignUp = lazyWithReload(() => import("@/pages/SignUp"));
 const UserProfile = lazyWithReload(() => import("@/pages/UserProfile"));
+const WorkspaceMap = lazyWithReload(() => import("@/pages/WorkspaceMap"));
 
 import { ROUTES } from "./routes";
 
@@ -67,6 +68,7 @@ const router = createBrowserRouter([
             children: [
               { path: "", element: <Home /> },
               { path: Routes.EXPLORE, element: <Explore /> },
+              { path: Routes.MAP, element: <WorkspaceMap /> },
               { path: Routes.ARCHIVED, element: <Archived /> },
               { path: "u/:username", element: <UserProfile /> },
             ],

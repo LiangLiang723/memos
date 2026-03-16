@@ -18,6 +18,12 @@ export const LocationDialog = ({
   onPlaceholderChange,
   onCancel,
   onConfirm,
+  candidates,
+  isGeocodingLoading,
+  imageLocationLabels,
+  activeImageLocationIndex,
+  onSelectImageLocation,
+  onUseCurrentLocation,
 }: LocationDialogProps) => {
   const t = useTranslate();
   const { placeholder, position, latInput, lngInput } = state;
@@ -36,7 +42,11 @@ export const LocationDialog = ({
         </VisuallyHidden>
         <div className="flex flex-col">
           <div className="w-full h-64 overflow-hidden rounded-t-md bg-muted/30">
-            <LocationPicker latlng={position} onChange={onPositionChange} />
+            <LocationPicker
+              key={open ? "location-picker-open" : "location-picker-closed"}
+              latlng={position}
+              onChange={onPositionChange}
+            />
           </div>
           <div className="w-full flex flex-col p-3 gap-3">
             <div className="grid grid-cols-2 gap-3">
@@ -77,6 +87,35 @@ export const LocationDialog = ({
               <Label htmlFor="memo-location-placeholder" className="text-xs uppercase tracking-wide text-muted-foreground">
                 {t("tooltip.select-location")}
               </Label>
+
+              {imageLocationLabels && imageLocationLabels.length > 0 && onSelectImageLocation && (
+                <div className="flex flex-wrap gap-1.5">
+                  {imageLocationLabels.map((label, index) => (
+                    <button
+                      key={`${label}-${index}`}
+                      type="button"
+                      onClick={() => onSelectImageLocation(index)}
+                      className={[
+                        "inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border transition-colors",
+                        activeImageLocationIndex === index
+                          ? "bg-primary/10 text-primary border-primary"
+                          : "bg-background text-foreground border-border hover:bg-accent",
+                      ].join(" ")}
+                    >
+                      <span className="max-w-[14rem] truncate">图片位置 {index + 1}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {onUseCurrentLocation && (
+                <div className="flex justify-start">
+                  <Button variant="outline" size="sm" onClick={onUseCurrentLocation}>
+                    回到当前位置
+                  </Button>
+                </div>
+              )}
+
               <Textarea
                 id="memo-location-placeholder"
                 placeholder="Choose a position first."
@@ -85,6 +124,36 @@ export const LocationDialog = ({
                 onChange={(e) => onPlaceholderChange(e.target.value)}
                 className="min-h-16"
               />
+
+              {isGeocodingLoading && <span className="text-xs text-muted-foreground">正在加载附近 POI...</span>}
+
+              {!isGeocodingLoading && candidates && candidates.length > 0 && (
+                <div className="grid gap-1">
+                  <Label className="text-xs text-muted-foreground">
+                    附近可选地点
+                  </Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {candidates.map((candidate) => {
+                      const selected = placeholder.trim() === candidate.trim();
+                      return (
+                        <button
+                          key={candidate}
+                          type="button"
+                          onClick={() => onPlaceholderChange(candidate)}
+                          className={[
+                            "inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border transition-colors",
+                            selected
+                              ? "bg-primary/10 text-primary border-primary"
+                              : "bg-background text-foreground border-border hover:bg-accent",
+                          ].join(" ")}
+                        >
+                          <span className="max-w-[16rem] truncate">{candidate}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="w-full flex items-center justify-end gap-2">
               <Button variant="ghost" onClick={onCancel}>

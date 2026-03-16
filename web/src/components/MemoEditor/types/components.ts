@@ -63,6 +63,12 @@ export interface LocationDialogProps {
   onPlaceholderChange: (placeholder: string) => void;
   onCancel: () => void;
   onConfirm: () => void;
+  candidates?: string[];
+  isGeocodingLoading?: boolean;
+  imageLocationLabels?: string[];
+  activeImageLocationIndex?: number;
+  onSelectImageLocation?: (index: number) => void;
+  onUseCurrentLocation?: () => void;
 }
 
 export interface InsertMenuProps {
