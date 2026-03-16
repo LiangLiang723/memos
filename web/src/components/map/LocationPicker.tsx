@@ -5,20 +5,36 @@ import { createRoot } from "react-dom/client";
 import { MapContainer, Marker, useMap, useMapEvents } from "react-leaflet";
 import { useInstance } from "@/contexts/InstanceContext";
 import { cn } from "@/lib/utils";
-import {
-  InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider,
-} from "@/types/proto/api/v1/instance_service_pb";
-import { defaultMarkerIcon, ThemedTileLayer } from "./map-utils";
+import { InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider } from "@/types/proto/api/v1/instance_service_pb";
+import { gcj02ToWgs84, wgs84ToGcj02 } from "./coord";
 import { buildExternalMapUrl, getMapSettingWithDefaults, isAmapProvider } from "./map-setting";
+import { defaultMarkerIcon, ThemedTileLayer } from "./map-utils";
 
 interface MarkerProps {
   position: LatLng | undefined;
+  provider: InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider;
   onChange: (position: LatLng) => void;
   readonly?: boolean;
 }
 
+const toProviderLatLng = (provider: InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider, position: LatLng): LatLng => {
+  if (!isAmapProvider(provider)) {
+    return position;
+  }
+  const [gcjLng, gcjLat] = wgs84ToGcj02(position.lng, position.lat);
+  return new LatLng(gcjLat, gcjLng);
+};
+
+const fromProviderLatLng = (provider: InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider, position: LatLng): LatLng => {
+  if (!isAmapProvider(provider)) {
+    return position;
+  }
+  const [wgsLng, wgsLat] = gcj02ToWgs84(position.lng, position.lat);
+  return new LatLng(wgsLat, wgsLng);
+};
+
 const LocationMarker = (props: MarkerProps) => {
-  const [position, setPosition] = useState(props.position);
+  const [position, setPosition] = useState(props.position ? toProviderLatLng(props.provider, props.position) : undefined);
   const initializedRef = useRef(false);
 
   const map = useMapEvents({
@@ -30,7 +46,7 @@ const LocationMarker = (props: MarkerProps) => {
       setPosition(e.latlng);
       map.locate();
       // Call the parent onChange function.
-      props.onChange(e.latlng);
+      props.onChange(fromProviderLatLng(props.provider, e.latlng));
     },
     locationfound() {},
   });
@@ -45,12 +61,13 @@ const LocationMarker = (props: MarkerProps) => {
   // Keep marker and map in sync with external position updates
   useEffect(() => {
     if (props.position) {
-      setPosition(props.position);
-      map.setView(props.position);
+      const providerPosition = toProviderLatLng(props.provider, props.position);
+      setPosition(providerPosition);
+      map.setView(providerPosition);
     } else {
       setPosition(undefined);
     }
-  }, [props.position, map]);
+  }, [props.provider, props.position, map]);
 
   return position === undefined ? null : <Marker position={position} icon={defaultMarkerIcon}></Marker>;
 };
@@ -243,7 +260,9 @@ interface MapProps {
 const DEFAULT_CENTER_LAT_LNG = new LatLng(48.8584, 2.2945);
 
 const LeafletMap = (props: MapProps) => {
-  const position = props.latlng || DEFAULT_CENTER_LAT_LNG;
+  const { memoRelatedSetting } = useInstance();
+  const mapSetting = getMapSettingWithDefaults(memoRelatedSetting.mapSetting);
+  const position = props.latlng ? toProviderLatLng(mapSetting.provider, props.latlng) : DEFAULT_CENTER_LAT_LNG;
 
   return (
     <MapContainer
@@ -256,7 +275,12 @@ const LeafletMap = (props: MapProps) => {
       attributionControl={false}
     >
       <ThemedTileLayer />
-      <LocationMarker position={position} readonly={props.readonly} onChange={props.onChange ? props.onChange : () => {}} />
+      <LocationMarker
+        position={props.latlng}
+        provider={mapSetting.provider}
+        readonly={props.readonly}
+        onChange={props.onChange ? props.onChange : () => {}}
+      />
       <MapControls position={props.latlng} />
       <MapCleanup />
     </MapContainer>

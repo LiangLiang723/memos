@@ -4,6 +4,7 @@ import { ExternalLinkIcon, PaperclipIcon, SearchIcon, Trash } from "lucide-react
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Link } from "react-router-dom";
+import { getAccessToken } from "@/auth-state";
 import AttachmentIcon from "@/components/AttachmentIcon";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Empty from "@/components/Empty";
@@ -11,7 +12,6 @@ import MobileHeader from "@/components/MobileHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { getAccessToken } from "@/auth-state";
 import { attachmentServiceClient } from "@/connect";
 import { extractUserIdFromName } from "@/helpers/resource-names";
 import { useDeleteAttachment } from "@/hooks/useAttachmentQueries";
@@ -231,7 +231,9 @@ const Attachments = () => {
         allAttachments.filter((_, index) => unavailableChecks[index]).map((attachment) => attachment.name),
       );
 
-      const allUnusedAttachments = allAttachments.filter((attachment) => !attachment.memo || unavailableAttachmentNames.has(attachment.name));
+      const allUnusedAttachments = allAttachments.filter(
+        (attachment) => !attachment.memo || unavailableAttachmentNames.has(attachment.name),
+      );
       await Promise.all(allUnusedAttachments.map((attachment) => deleteAttachment(attachment.name)));
 
       toast.success(t("resource.delete-all-unused-success"));
@@ -304,7 +306,12 @@ const Attachments = () => {
                   >
                     {t("common.all")}
                   </Button>
-                  <Button variant={scope === "mine" ? "secondary" : "ghost"} size="sm" className="h-7 px-2" onClick={() => setScope("mine")}>
+                  <Button
+                    variant={scope === "mine" ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => setScope("mine")}
+                  >
                     {t("common.yourself")}
                   </Button>
                 </div>
@@ -359,14 +366,25 @@ const Attachments = () => {
                                 <span className="text-muted-foreground opacity-80">({unusedAttachments.length})</span>
                               </div>
                               {(canDeleteAllUnused || isAdmin) && (
-                                <div className="flex flex-row items-center gap-2">
+                                <div className="flex w-full sm:w-auto flex-col sm:flex-row items-stretch sm:items-center gap-2">
                                   {isAdmin && (
-                                    <Button variant="outline" onClick={handleCompactSQLite} size="sm" disabled={isCompactingSQLite}>
+                                    <Button
+                                      variant="outline"
+                                      onClick={handleCompactSQLite}
+                                      size="sm"
+                                      disabled={isCompactingSQLite}
+                                      className="w-full sm:w-auto"
+                                    >
                                       {isCompactingSQLite ? t("resource.reclaim-sqlite-space-loading") : t("resource.reclaim-sqlite-space")}
                                     </Button>
                                   )}
                                   {canDeleteAllUnused && (
-                                    <Button variant="destructive" onClick={() => deleteUnusedAttachmentsDialog.open()} size="sm">
+                                    <Button
+                                      variant="destructive"
+                                      onClick={() => deleteUnusedAttachmentsDialog.open()}
+                                      size="sm"
+                                      className="w-full sm:w-auto"
+                                    >
                                       <Trash />
                                       {t("resource.delete-all-unused")}
                                     </Button>
@@ -378,7 +396,9 @@ const Attachments = () => {
                               <AttachmentItem key={attachment.name} attachment={attachment} />
                             ))}
                             {unusedAttachments.length === 0 && (
-                              <div className="col-span-3 sm:col-span-4 md:col-span-5 text-sm text-muted-foreground italic">{t("resource.no-unused-resources")}</div>
+                              <div className="col-span-3 sm:col-span-4 md:col-span-5 text-sm text-muted-foreground italic">
+                                {t("resource.no-unused-resources")}
+                              </div>
                             )}
                           </div>
                         </div>

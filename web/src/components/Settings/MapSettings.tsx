@@ -102,9 +102,7 @@ const MapSettings = () => {
               <SelectItem value={String(InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider.OPEN_STREET_MAP)}>
                 OpenStreetMap
               </SelectItem>
-              <SelectItem value={String(InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider.AMAP)}>
-                AMap (Gaode)
-              </SelectItem>
+              <SelectItem value={String(InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider.AMAP)}>AMap (Gaode)</SelectItem>
             </SelectContent>
           </Select>
         </SettingRow>

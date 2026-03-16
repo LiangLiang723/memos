@@ -1,5 +1,7 @@
+import * as exifr from "exifr";
 import { type FC, useEffect, useRef, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { getAttachmentUrl } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
 import { useEditorContext } from "../state";
 
@@ -19,6 +21,30 @@ function parseDateTimeLocal(value: string): Date | undefined {
   if (!value) return undefined;
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+function parseExifDate(value: unknown): Date | undefined {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value;
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+
+  return undefined;
+}
+
+function extractExifShotTime(exifData: Record<string, unknown> | null): Date | undefined {
+  return (
+    parseExifDate(exifData?.DateTimeOriginal) ??
+    parseExifDate(exifData?.CreateDate) ??
+    parseExifDate(exifData?.DateTimeDigitized) ??
+    parseExifDate(exifData?.ModifyDate)
+  );
 }
 
 const TimestampInput: FC<{
@@ -69,6 +95,63 @@ export const TimestampPopover: FC = () => {
   const { state, actions, dispatch } = useEditorContext();
   const { createTime, updateTime } = state.timestamps;
   const defaultTimeRef = useRef(new Date());
+  const [firstImageShotTime, setFirstImageShotTime] = useState<Date | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolveFirstImageShotTime = async () => {
+      const imageFiles = state.localFiles.filter((localFile) => localFile.file.type.startsWith("image/"));
+
+      for (const localFile of imageFiles) {
+        try {
+          const exifData = (await exifr.parse(localFile.file, { tiff: true })) as Record<string, unknown> | null;
+          const shotTime = extractExifShotTime(exifData);
+
+          if (shotTime) {
+            if (!cancelled) {
+              setFirstImageShotTime(shotTime);
+            }
+            return;
+          }
+        } catch {
+          // Ignore EXIF parsing errors and continue scanning next image.
+        }
+      }
+
+      const imageAttachments = state.metadata.attachments.filter((attachment) => attachment.type.startsWith("image/"));
+      for (const attachment of imageAttachments) {
+        try {
+          const response = await fetch(getAttachmentUrl(attachment), { credentials: "include" });
+          if (!response.ok) {
+            continue;
+          }
+          const blob = await response.blob();
+          const exifData = (await exifr.parse(blob, { tiff: true })) as Record<string, unknown> | null;
+          const shotTime = extractExifShotTime(exifData);
+
+          if (shotTime) {
+            if (!cancelled) {
+              setFirstImageShotTime(shotTime);
+            }
+            return;
+          }
+        } catch {
+          // Ignore EXIF parsing errors and continue scanning next image attachment.
+        }
+      }
+
+      if (!cancelled) {
+        setFirstImageShotTime(undefined);
+      }
+    };
+
+    void resolveFirstImageShotTime();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.localFiles, state.metadata.attachments]);
 
   useEffect(() => {
     if (createTime) return;
@@ -79,27 +162,40 @@ export const TimestampPopover: FC = () => {
   const effectiveCreateTime = createTime ?? defaultTimeRef.current;
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <div className="w-auto inline-flex items-center gap-2">
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="w-auto text-sm text-muted-foreground text-left hover:text-foreground transition-colors cursor-pointer"
+          >
+            {formatDisplayDate(effectiveCreateTime)}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-auto p-2 pt-1 space-y-1">
+          <TimestampInput
+            label={t("common.created-at")}
+            date={createTime}
+            onChange={(d) => dispatch(actions.setTimestamps({ createTime: d }))}
+          />
+          <TimestampInput
+            label={t("common.last-updated-at")}
+            date={updateTime}
+            onChange={(d) => dispatch(actions.setTimestamps({ updateTime: d }))}
+          />
+        </PopoverContent>
+      </Popover>
+
+      {firstImageShotTime && (
         <button
           type="button"
-          className="w-auto text-sm text-muted-foreground text-left hover:text-foreground transition-colors cursor-pointer"
+          className="text-xs text-primary hover:underline cursor-pointer"
+          onClick={() => dispatch(actions.setTimestamps({ createTime: firstImageShotTime }))}
+          title={formatDisplayDate(firstImageShotTime)}
         >
-          {formatDisplayDate(effectiveCreateTime)}
+          {t("editor.use-first-photo-shot-time")}
         </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-2 pt-1 space-y-1">
-        <TimestampInput
-          label={t("common.created-at")}
-          date={createTime}
-          onChange={(d) => dispatch(actions.setTimestamps({ createTime: d }))}
-        />
-        <TimestampInput
-          label={t("common.last-updated-at")}
-          date={updateTime}
-          onChange={(d) => dispatch(actions.setTimestamps({ updateTime: d }))}
-        />
-      </PopoverContent>
-    </Popover>
+      )}
+    </div>
   );
 };

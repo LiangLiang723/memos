@@ -81,9 +81,8 @@
     "reset": "重置",
     "resources": "资源库",
     "restore": "恢复",
-      "remove": "移除",
-    "role": "身份",
     "remove": "移除",
+    "role": "身份",
     "save": "保存",
     "search": "搜索",
     "select": "选择",
@@ -124,10 +123,14 @@
     "any-thoughts": "此刻的想法...",
     "exit-focus-mode": "退出聚焦模式",
     "focus-mode": "聚焦模式",
+    "location-permission-denied": "定位权限被拒绝，请在浏览器权限中允许定位，并确保使用 HTTPS 访问",
+    "location-position-unavailable": "无法获取定位信息",
+    "location-unavailable": "无法获取当前位置",
     "no-changes-detected": "未检测到更改",
     "save": "保存",
     "saving": "保存中...",
-    "slash-commands": "按下 `/` 输入命令"
+    "slash-commands": "按下 `/` 输入命令",
+    "use-first-photo-shot-time": "读取时间"
   },
   "filters": {
     "has-code": "有代码",

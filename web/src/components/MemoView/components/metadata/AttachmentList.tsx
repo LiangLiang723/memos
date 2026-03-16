@@ -141,7 +141,7 @@ const AttachmentList = ({ attachments }: AttachmentListProps) => {
 
   const imageAttachments = useMemo(() => visual.filter(isImageAttachment), [visual]);
   const imageUrls = useMemo(() => imageAttachments.map(getAttachmentUrl), [imageAttachments]);
-  
+
   // Count only non-image attachments for "Attachments" label
   const nonImageAttachmentCount = audio.length + docs.length;
 
@@ -150,7 +150,7 @@ const AttachmentList = ({ attachments }: AttachmentListProps) => {
     if (imageAttachments.length === 0) {
       return null;
     }
-    
+
     // Only images, no "Attachments" label
     const handleImageClick = (imgUrl: string) => {
       const index = imageUrls.findIndex((url) => url === imgUrl);

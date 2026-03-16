@@ -7,7 +7,7 @@
   --transition-fast: 100ms;
   --transition-normal: 150ms;
   --transition-slow: 200ms;
-  
+
   --animation-fade: fade 150ms ease-in-out;
   --animation-slide-in-up: slide-in-up 200ms ease-out;
   --animation-slide-in-down: slide-in-down 200ms ease-out;

@@ -1,8 +1,8 @@
 import { create } from "@bufbuild/protobuf";
 import { FieldMaskSchema, timestampDate } from "@bufbuild/protobuf/wkt";
+import dayjs from "dayjs";
 import { CheckIcon, MessageCircleIcon, TrashIcon, XIcon } from "lucide-react";
 import { useState } from "react";
-import dayjs from "dayjs";
 import toast from "react-hot-toast";
 import UserAvatar from "@/components/UserAvatar";
 import { activityServiceClient, memoServiceClient, userServiceClient } from "@/connect";
