@@ -78,12 +78,7 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
+        # GitHub Container Registry login removed; only Docker Hub login is used
 
       - name: Build and push by digest
         id: build
@@ -94,7 +89,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           cache-from: type=gha,scope=build-${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=build-${{ matrix.platform }}
-          outputs: type=image,name=neosmemo/memos,push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=benxianyu/memos,push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
         run: |
@@ -132,8 +127,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            neosmemo/memos
-            ghcr.io/usememos/memos
+            benxianyu/memos
           flavor: |
             latest=false
           tags: |
@@ -145,22 +139,16 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
+        # GitHub Container Registry login removed; only Docker Hub login is used
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf 'neosmemo/memos@sha256:%s ' *)
+            $(printf 'benxianyu/memos@sha256:%s ' *)
         env:
           DOCKER_METADATA_OUTPUT_JSON: ${{ steps.meta.outputs.json }}
 
       - name: Inspect images
         run: |
-          docker buildx imagetools inspect neosmemo/memos:canary
-          docker buildx imagetools inspect ghcr.io/usememos/memos:canary
+          docker buildx imagetools inspect benxianyu/memos:canary
