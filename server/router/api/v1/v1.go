@@ -8,6 +8,8 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"golang.org/x/sync/semaphore"
 
 	"github.com/usememos/memos/internal/profile"
@@ -120,6 +122,41 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 	// Register SSE endpoint with same CORS as rest of /api/v1.
 	gwGroup.GET("/api/v1/sse", func(c *echo.Context) error {
 		return handleSSE(c, s.SSEHub, auth.NewAuthenticator(s.Store, s.Secret))
+	})
+	gwGroup.POST("/api/v1/admin/sqlite/compact", func(c *echo.Context) error {
+		ctx := c.Request().Context()
+		authHeader := c.Request().Header.Get("Authorization")
+		authResult := authenticator.Authenticate(ctx, authHeader)
+		if authResult == nil {
+			return c.String(http.StatusUnauthorized, "authentication required")
+		}
+
+		ctx = auth.ApplyToContext(ctx, authResult)
+		user, err := s.fetchCurrentUser(ctx)
+		if err != nil {
+			return c.String(http.StatusInternalServerError, "failed to get current user")
+		}
+		if user == nil {
+			return c.String(http.StatusUnauthorized, "user not authenticated")
+		}
+		if !isSuperUser(user) {
+			return c.String(http.StatusForbidden, "permission denied")
+		}
+		if s.Profile.Driver != "sqlite" {
+			return c.String(http.StatusBadRequest, "compact is only supported for sqlite")
+		}
+
+		db := s.Store.GetDriver().GetDB()
+		if _, err := db.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE);"); err != nil {
+			st := status.Convert(status.Errorf(codes.Internal, "failed to checkpoint sqlite wal: %v", err))
+			return c.String(http.StatusInternalServerError, st.Message())
+		}
+		if _, err := db.ExecContext(ctx, "VACUUM;"); err != nil {
+			st := status.Convert(status.Errorf(codes.Internal, "failed to vacuum sqlite: %v", err))
+			return c.String(http.StatusInternalServerError, st.Message())
+		}
+
+		return c.JSON(http.StatusOK, map[string]bool{"ok": true})
 	})
 	handler := echo.WrapHandler(gwMux)
 

@@ -88,10 +88,10 @@ export const EditorContent = forwardRef<EditorRefActions, EditorContentProps>(({
         };
 
         return (
-          <div className="mt-3 grid gap-2 grid-cols-3">
+          <div className="mt-3 grid gap-2 grid-cols-3 lg:grid-cols-5">
             {imagesToShow.map((img) => (
-              <div key={img.id} className="relative group">
-                <img src={img.thumbnailUrl} alt={img.filename} className="w-full h-28 object-cover rounded" />
+              <div key={img.id} className="relative group aspect-square rounded-lg overflow-hidden border border-border bg-muted/40">
+                <img src={img.thumbnailUrl} alt={img.filename} className="w-full h-full object-cover" />
                 <button
                   type="button"
                   onClick={() => handleRemoveImage(img.id, img.isLocal)}

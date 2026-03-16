@@ -179,41 +179,92 @@ func (s *APIV1Service) ListAttachments(ctx context.Context, request *v1pb.ListAt
 		}
 	}
 
-	findAttachment := &store.FindAttachment{
-		CreatorID: &user.ID,
-		Limit:     &pageSize,
-		Offset:    &offset,
-	}
+	filters := []string{}
 
 	// Parse filter if provided
 	if request.Filter != "" {
 		if err := s.validateAttachmentFilter(ctx, request.Filter); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "invalid filter: %v", err)
 		}
-		findAttachment.Filters = append(findAttachment.Filters, request.Filter)
-	}
-
-	attachments, err := s.Store.ListAttachments(ctx, findAttachment)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to list attachments: %v", err)
+		filters = append(filters, request.Filter)
 	}
 
 	response := &v1pb.ListAttachmentsResponse{}
+	nextOffset := offset
+	maxScanIterations := 100
 
-	for _, attachment := range attachments {
-		response.Attachments = append(response.Attachments, convertAttachmentFromStore(attachment))
+	for i := 0; i < maxScanIterations && len(response.Attachments) < pageSize; i++ {
+		findAttachment := &store.FindAttachment{
+			Limit:   &pageSize,
+			Offset:  &nextOffset,
+			Filters: filters,
+		}
+
+		attachments, err := s.Store.ListAttachments(ctx, findAttachment)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to list attachments: %v", err)
+		}
+		if len(attachments) == 0 {
+			nextOffset = -1
+			break
+		}
+
+		nextOffset += len(attachments)
+		for _, attachment := range attachments {
+			allowed, err := s.canAccessAttachmentInList(ctx, user, attachment)
+			if err != nil {
+				continue
+			}
+			if !allowed {
+				continue
+			}
+
+			response.Attachments = append(response.Attachments, convertAttachmentFromStore(attachment))
+			if len(response.Attachments) >= pageSize {
+				break
+			}
+		}
+
+		if len(attachments) < pageSize {
+			nextOffset = -1
+			break
+		}
 	}
 
 	// For simplicity, set total size to the number of returned attachments.
 	// In a full implementation, you'd want a separate count query
 	response.TotalSize = int32(len(response.Attachments))
 
-	// Set next page token if we got the full page size (indicating there might be more)
-	if len(attachments) == pageSize {
-		response.NextPageToken = fmt.Sprintf("%d", offset+pageSize)
+	if nextOffset >= 0 && len(response.Attachments) == pageSize {
+		response.NextPageToken = fmt.Sprintf("%d", nextOffset)
 	}
 
 	return response, nil
+}
+
+func (s *APIV1Service) canAccessAttachmentInList(ctx context.Context, user *store.User, attachment *store.Attachment) (bool, error) {
+	if isSuperUser(user) {
+		return true, nil
+	}
+
+	if attachment.MemoID == nil {
+		return attachment.CreatorID == user.ID, nil
+	}
+
+	memo, err := s.Store.GetMemo(ctx, &store.FindMemo{ID: attachment.MemoID})
+	if err != nil {
+		return false, nil
+	}
+	if memo == nil {
+		// Treat dangling memo references as unlinked attachments.
+		return attachment.CreatorID == user.ID, nil
+	}
+
+	if memo.Visibility == store.Private && memo.CreatorID != user.ID {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 func (s *APIV1Service) GetAttachment(ctx context.Context, request *v1pb.GetAttachmentRequest) (*v1pb.Attachment, error) {
@@ -298,15 +349,15 @@ func (s *APIV1Service) DeleteAttachment(ctx context.Context, request *v1pb.Delet
 	if user == nil {
 		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
 	}
-	attachment, err := s.Store.GetAttachment(ctx, &store.FindAttachment{
-		UID:       &attachmentUID,
-		CreatorID: &user.ID,
-	})
+	attachment, err := s.Store.GetAttachment(ctx, &store.FindAttachment{UID: &attachmentUID})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to find attachment: %v", err)
 	}
 	if attachment == nil {
 		return nil, status.Errorf(codes.NotFound, "attachment not found")
+	}
+	if attachment.CreatorID != user.ID && !isSuperUser(user) {
+		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
 	}
 	// Delete the attachment from the database.
 	if err := s.Store.DeleteAttachment(ctx, &store.DeleteAttachment{
