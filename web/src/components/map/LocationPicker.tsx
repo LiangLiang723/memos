@@ -3,8 +3,13 @@ import { ExternalLinkIcon, MinusIcon, PlusIcon } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { MapContainer, Marker, useMap, useMapEvents } from "react-leaflet";
+import { useInstance } from "@/contexts/InstanceContext";
 import { cn } from "@/lib/utils";
+import {
+  InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider,
+} from "@/types/proto/api/v1/instance_service_pb";
 import { defaultMarkerIcon, ThemedTileLayer } from "./map-utils";
+import { buildExternalMapUrl, getMapSettingWithDefaults, isAmapProvider } from "./map-setting";
 
 interface MarkerProps {
   position: LatLng | undefined;
@@ -84,18 +89,21 @@ interface ControlButtonsProps {
   position: LatLng | undefined;
   onZoomIn: () => void;
   onZoomOut: () => void;
-  onOpenGoogleMaps: () => void;
+  onOpenExternalMap: () => void;
+  provider: InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider;
 }
 
-const ControlButtons = ({ position, onZoomIn, onZoomOut, onOpenGoogleMaps }: ControlButtonsProps) => {
+const ControlButtons = ({ position, onZoomIn, onZoomOut, onOpenExternalMap, provider }: ControlButtonsProps) => {
+  const openLabel = isAmapProvider(provider) ? "Open in AMap" : "Open in Google Maps";
+
   return (
     <div className="flex flex-col gap-1.5">
       {position && (
         <GlassButton
           icon={<ExternalLinkIcon size={16} className="text-foreground" />}
-          onClick={onOpenGoogleMaps}
-          ariaLabel="Open location in Google Maps"
-          title="Open in Google Maps"
+          onClick={onOpenExternalMap}
+          ariaLabel={openLabel}
+          title={openLabel}
         />
       )}
       <GlassButton icon={<PlusIcon size={16} className="text-foreground" />} onClick={onZoomIn} ariaLabel="Zoom in" title="Zoom in" />
@@ -134,12 +142,14 @@ interface MapControlsProps {
 
 const MapControls = ({ position }: MapControlsProps) => {
   const map = useMap();
+  const { memoRelatedSetting } = useInstance();
   const controlRef = useRef<MapControlsContainer | null>(null);
   const rootRef = useRef<ReturnType<typeof createRoot> | null>(null);
+  const mapSetting = getMapSettingWithDefaults(memoRelatedSetting.mapSetting);
 
-  const handleOpenInGoogleMaps = () => {
+  const handleOpenInExternalMap = () => {
     if (!position) return;
-    const url = `https://www.google.com/maps?q=${position.lat},${position.lng}`;
+    const url = buildExternalMapUrl(mapSetting.provider, position.lat, position.lng);
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
@@ -162,7 +172,13 @@ const MapControls = ({ position }: MapControlsProps) => {
     if (container) {
       rootRef.current = createRoot(container);
       rootRef.current.render(
-        <ControlButtons position={position} onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} onOpenGoogleMaps={handleOpenInGoogleMaps} />,
+        <ControlButtons
+          position={position}
+          provider={mapSetting.provider}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onOpenExternalMap={handleOpenInExternalMap}
+        />,
       );
     }
 
@@ -183,10 +199,16 @@ const MapControls = ({ position }: MapControlsProps) => {
   useEffect(() => {
     if (rootRef.current) {
       rootRef.current.render(
-        <ControlButtons position={position} onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} onOpenGoogleMaps={handleOpenInGoogleMaps} />,
+        <ControlButtons
+          position={position}
+          provider={mapSetting.provider}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onOpenExternalMap={handleOpenInExternalMap}
+        />,
       );
     }
-  }, [position]);
+  }, [position, mapSetting.provider]);
 
   return null;
 };

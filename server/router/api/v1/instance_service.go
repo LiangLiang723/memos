@@ -247,26 +247,42 @@ func convertInstanceMemoRelatedSettingFromStore(setting *storepb.InstanceMemoRel
 	if setting == nil {
 		return nil
 	}
-	return &v1pb.InstanceSetting_MemoRelatedSetting{
+	memoRelatedSetting := &v1pb.InstanceSetting_MemoRelatedSetting{
 		DisallowPublicVisibility: setting.DisallowPublicVisibility,
 		DisplayWithUpdateTime:    setting.DisplayWithUpdateTime,
 		ContentLengthLimit:       setting.ContentLengthLimit,
 		EnableDoubleClickEdit:    setting.EnableDoubleClickEdit,
 		Reactions:                setting.Reactions,
 	}
+	if setting.MapSetting != nil {
+		memoRelatedSetting.MapSetting = &v1pb.InstanceSetting_MemoRelatedSetting_MapSetting{
+			Provider:        v1pb.InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider(setting.MapSetting.Provider),
+			AmapApiKey:      setting.MapSetting.AmapApiKey,
+			AmapSecurityKey: setting.MapSetting.AmapSecurityKey,
+		}
+	}
+	return memoRelatedSetting
 }
 
 func convertInstanceMemoRelatedSettingToStore(setting *v1pb.InstanceSetting_MemoRelatedSetting) *storepb.InstanceMemoRelatedSetting {
 	if setting == nil {
 		return nil
 	}
-	return &storepb.InstanceMemoRelatedSetting{
+	memoRelatedSetting := &storepb.InstanceMemoRelatedSetting{
 		DisallowPublicVisibility: setting.DisallowPublicVisibility,
 		DisplayWithUpdateTime:    setting.DisplayWithUpdateTime,
 		ContentLengthLimit:       setting.ContentLengthLimit,
 		EnableDoubleClickEdit:    setting.EnableDoubleClickEdit,
 		Reactions:                setting.Reactions,
 	}
+	if setting.MapSetting != nil {
+		memoRelatedSetting.MapSetting = &storepb.InstanceMapSetting{
+			Provider:        storepb.MapProvider(setting.MapSetting.Provider),
+			AmapApiKey:      setting.MapSetting.AmapApiKey,
+			AmapSecurityKey: setting.MapSetting.AmapSecurityKey,
+		}
+	}
+	return memoRelatedSetting
 }
 
 func (s *APIV1Service) GetInstanceAdmin(ctx context.Context) (*v1pb.User, error) {

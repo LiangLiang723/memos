@@ -301,6 +301,15 @@
     },
     "member": "Member",
     "member-list": "Member list",
+    "map": "Map",
+    "map-settings": {
+      "amap-api-key": "AMap API key",
+      "amap-api-key-placeholder": "Enter AMap Web Service key",
+      "amap-security-key": "AMap security key",
+      "amap-security-key-placeholder": "Optional security key",
+      "provider": "Map provider",
+      "title": "Map settings"
+    },
     "member-section": {
       "admin": "Admin",
       "archive-member": "Archive member",

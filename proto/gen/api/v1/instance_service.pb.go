@@ -135,6 +135,55 @@ func (InstanceSetting_StorageSetting_StorageType) EnumDescriptor() ([]byte, []in
 	return file_api_v1_instance_service_proto_rawDescGZIP(), []int{2, 1, 0}
 }
 
+type InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider int32
+
+const (
+	InstanceSetting_MemoRelatedSetting_MapSetting_MAP_PROVIDER_UNSPECIFIED InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider = 0
+	InstanceSetting_MemoRelatedSetting_MapSetting_OPEN_STREET_MAP          InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider = 1
+	InstanceSetting_MemoRelatedSetting_MapSetting_AMAP                     InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider = 2
+)
+
+// Enum value maps for InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider.
+var (
+	InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider_name = map[int32]string{
+		0: "MAP_PROVIDER_UNSPECIFIED",
+		1: "OPEN_STREET_MAP",
+		2: "AMAP",
+	}
+	InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider_value = map[string]int32{
+		"MAP_PROVIDER_UNSPECIFIED": 0,
+		"OPEN_STREET_MAP":          1,
+		"AMAP":                     2,
+	}
+)
+
+func (x InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider) Enum() *InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider {
+	p := new(InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider)
+	*p = x
+	return p
+}
+
+func (x InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_v1_instance_service_proto_enumTypes[2].Descriptor()
+}
+
+func (InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider) Type() protoreflect.EnumType {
+	return &file_api_v1_instance_service_proto_enumTypes[2]
+}
+
+func (x InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider.Descriptor instead.
+func (InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider) EnumDescriptor() ([]byte, []int) {
+	return file_api_v1_instance_service_proto_rawDescGZIP(), []int{2, 2, 0, 0}
+}
+
 // Instance profile message containing basic instance information.
 type InstanceProfile struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -654,7 +703,9 @@ type InstanceSetting_MemoRelatedSetting struct {
 	// enable_double_click_edit enables editing on double click.
 	EnableDoubleClickEdit bool `protobuf:"varint,4,opt,name=enable_double_click_edit,json=enableDoubleClickEdit,proto3" json:"enable_double_click_edit,omitempty"`
 	// reactions is the list of reactions.
-	Reactions     []string `protobuf:"bytes,7,rep,name=reactions,proto3" json:"reactions,omitempty"`
+	Reactions []string `protobuf:"bytes,7,rep,name=reactions,proto3" json:"reactions,omitempty"`
+	// map_setting is the map provider setting for memo location features.
+	MapSetting    *InstanceSetting_MemoRelatedSetting_MapSetting `protobuf:"bytes,8,opt,name=map_setting,json=mapSetting,proto3" json:"map_setting,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -720,6 +771,13 @@ func (x *InstanceSetting_MemoRelatedSetting) GetEnableDoubleClickEdit() bool {
 func (x *InstanceSetting_MemoRelatedSetting) GetReactions() []string {
 	if x != nil {
 		return x.Reactions
+	}
+	return nil
+}
+
+func (x *InstanceSetting_MemoRelatedSetting) GetMapSetting() *InstanceSetting_MemoRelatedSetting_MapSetting {
+	if x != nil {
+		return x.MapSetting
 	}
 	return nil
 }
@@ -871,6 +929,70 @@ func (x *InstanceSetting_StorageSetting_S3Config) GetUsePathStyle() bool {
 	return false
 }
 
+// MapSetting controls map provider and provider-specific credentials.
+type InstanceSetting_MemoRelatedSetting_MapSetting struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// provider is the selected map provider.
+	Provider InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider `protobuf:"varint,1,opt,name=provider,proto3,enum=memos.api.v1.InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider" json:"provider,omitempty"`
+	// amap_api_key is the key for AMap web service APIs.
+	AmapApiKey string `protobuf:"bytes,2,opt,name=amap_api_key,json=amapApiKey,proto3" json:"amap_api_key,omitempty"`
+	// amap_security_key is the optional security key for AMap integrations.
+	AmapSecurityKey string `protobuf:"bytes,3,opt,name=amap_security_key,json=amapSecurityKey,proto3" json:"amap_security_key,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *InstanceSetting_MemoRelatedSetting_MapSetting) Reset() {
+	*x = InstanceSetting_MemoRelatedSetting_MapSetting{}
+	mi := &file_api_v1_instance_service_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InstanceSetting_MemoRelatedSetting_MapSetting) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstanceSetting_MemoRelatedSetting_MapSetting) ProtoMessage() {}
+
+func (x *InstanceSetting_MemoRelatedSetting_MapSetting) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_instance_service_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstanceSetting_MemoRelatedSetting_MapSetting.ProtoReflect.Descriptor instead.
+func (*InstanceSetting_MemoRelatedSetting_MapSetting) Descriptor() ([]byte, []int) {
+	return file_api_v1_instance_service_proto_rawDescGZIP(), []int{2, 2, 0}
+}
+
+func (x *InstanceSetting_MemoRelatedSetting_MapSetting) GetProvider() InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider {
+	if x != nil {
+		return x.Provider
+	}
+	return InstanceSetting_MemoRelatedSetting_MapSetting_MAP_PROVIDER_UNSPECIFIED
+}
+
+func (x *InstanceSetting_MemoRelatedSetting_MapSetting) GetAmapApiKey() string {
+	if x != nil {
+		return x.AmapApiKey
+	}
+	return ""
+}
+
+func (x *InstanceSetting_MemoRelatedSetting_MapSetting) GetAmapSecurityKey() string {
+	if x != nil {
+		return x.AmapSecurityKey
+	}
+	return ""
+}
+
 var File_api_v1_instance_service_proto protoreflect.FileDescriptor
 
 const file_api_v1_instance_service_proto_rawDesc = "" +
@@ -881,7 +1003,7 @@ const file_api_v1_instance_service_proto_rawDesc = "" +
 	"\x04demo\x18\x03 \x01(\bR\x04demo\x12!\n" +
 	"\finstance_url\x18\x06 \x01(\tR\vinstanceUrl\x12(\n" +
 	"\x05admin\x18\a \x01(\v2\x12.memos.api.v1.UserR\x05admin\"\x1b\n" +
-	"\x19GetInstanceProfileRequest\"\x99\x0f\n" +
+	"\x19GetInstanceProfileRequest\"\x85\x12\n" +
 	"\x0fInstanceSetting\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12W\n" +
 	"\x0fgeneral_setting\x18\x02 \x01(\v2,.memos.api.v1.InstanceSetting.GeneralSettingH\x00R\x0egeneralSetting\x12W\n" +
@@ -916,13 +1038,25 @@ const file_api_v1_instance_service_proto_rawDesc = "" +
 	"\x18STORAGE_TYPE_UNSPECIFIED\x10\x00\x12\f\n" +
 	"\bDATABASE\x10\x01\x12\t\n" +
 	"\x05LOCAL\x10\x02\x12\x06\n" +
-	"\x02S3\x10\x03\x1a\x94\x02\n" +
+	"\x02S3\x10\x03\x1a\x80\x05\n" +
 	"\x12MemoRelatedSetting\x12<\n" +
 	"\x1adisallow_public_visibility\x18\x01 \x01(\bR\x18disallowPublicVisibility\x127\n" +
 	"\x18display_with_update_time\x18\x02 \x01(\bR\x15displayWithUpdateTime\x120\n" +
 	"\x14content_length_limit\x18\x03 \x01(\x05R\x12contentLengthLimit\x127\n" +
 	"\x18enable_double_click_edit\x18\x04 \x01(\bR\x15enableDoubleClickEdit\x12\x1c\n" +
-	"\treactions\x18\a \x03(\tR\treactions\"F\n" +
+	"\treactions\x18\a \x03(\tR\treactions\x12\\\n" +
+	"\vmap_setting\x18\b \x01(\v2;.memos.api.v1.InstanceSetting.MemoRelatedSetting.MapSettingR\n" +
+	"mapSetting\x1a\x8b\x02\n" +
+	"\n" +
+	"MapSetting\x12c\n" +
+	"\bprovider\x18\x01 \x01(\x0e2G.memos.api.v1.InstanceSetting.MemoRelatedSetting.MapSetting.MapProviderR\bprovider\x12 \n" +
+	"\famap_api_key\x18\x02 \x01(\tR\n" +
+	"amapApiKey\x12*\n" +
+	"\x11amap_security_key\x18\x03 \x01(\tR\x0famapSecurityKey\"J\n" +
+	"\vMapProvider\x12\x1c\n" +
+	"\x18MAP_PROVIDER_UNSPECIFIED\x10\x00\x12\x13\n" +
+	"\x0fOPEN_STREET_MAP\x10\x01\x12\b\n" +
+	"\x04AMAP\x10\x02\"F\n" +
 	"\x03Key\x12\x13\n" +
 	"\x0fKEY_UNSPECIFIED\x10\x00\x12\v\n" +
 	"\aGENERAL\x10\x01\x12\v\n" +
@@ -955,45 +1089,49 @@ func file_api_v1_instance_service_proto_rawDescGZIP() []byte {
 	return file_api_v1_instance_service_proto_rawDescData
 }
 
-var file_api_v1_instance_service_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_api_v1_instance_service_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_api_v1_instance_service_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_api_v1_instance_service_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_api_v1_instance_service_proto_goTypes = []any{
-	(InstanceSetting_Key)(0),                             // 0: memos.api.v1.InstanceSetting.Key
-	(InstanceSetting_StorageSetting_StorageType)(0),      // 1: memos.api.v1.InstanceSetting.StorageSetting.StorageType
-	(*InstanceProfile)(nil),                              // 2: memos.api.v1.InstanceProfile
-	(*GetInstanceProfileRequest)(nil),                    // 3: memos.api.v1.GetInstanceProfileRequest
-	(*InstanceSetting)(nil),                              // 4: memos.api.v1.InstanceSetting
-	(*GetInstanceSettingRequest)(nil),                    // 5: memos.api.v1.GetInstanceSettingRequest
-	(*UpdateInstanceSettingRequest)(nil),                 // 6: memos.api.v1.UpdateInstanceSettingRequest
-	(*InstanceSetting_GeneralSetting)(nil),               // 7: memos.api.v1.InstanceSetting.GeneralSetting
-	(*InstanceSetting_StorageSetting)(nil),               // 8: memos.api.v1.InstanceSetting.StorageSetting
-	(*InstanceSetting_MemoRelatedSetting)(nil),           // 9: memos.api.v1.InstanceSetting.MemoRelatedSetting
-	(*InstanceSetting_GeneralSetting_CustomProfile)(nil), // 10: memos.api.v1.InstanceSetting.GeneralSetting.CustomProfile
-	(*InstanceSetting_StorageSetting_S3Config)(nil),      // 11: memos.api.v1.InstanceSetting.StorageSetting.S3Config
-	(*User)(nil),                  // 12: memos.api.v1.User
-	(*fieldmaskpb.FieldMask)(nil), // 13: google.protobuf.FieldMask
+	(InstanceSetting_Key)(0),                                       // 0: memos.api.v1.InstanceSetting.Key
+	(InstanceSetting_StorageSetting_StorageType)(0),                // 1: memos.api.v1.InstanceSetting.StorageSetting.StorageType
+	(InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider)(0), // 2: memos.api.v1.InstanceSetting.MemoRelatedSetting.MapSetting.MapProvider
+	(*InstanceProfile)(nil),                                        // 3: memos.api.v1.InstanceProfile
+	(*GetInstanceProfileRequest)(nil),                              // 4: memos.api.v1.GetInstanceProfileRequest
+	(*InstanceSetting)(nil),                                        // 5: memos.api.v1.InstanceSetting
+	(*GetInstanceSettingRequest)(nil),                              // 6: memos.api.v1.GetInstanceSettingRequest
+	(*UpdateInstanceSettingRequest)(nil),                           // 7: memos.api.v1.UpdateInstanceSettingRequest
+	(*InstanceSetting_GeneralSetting)(nil),                         // 8: memos.api.v1.InstanceSetting.GeneralSetting
+	(*InstanceSetting_StorageSetting)(nil),                         // 9: memos.api.v1.InstanceSetting.StorageSetting
+	(*InstanceSetting_MemoRelatedSetting)(nil),                     // 10: memos.api.v1.InstanceSetting.MemoRelatedSetting
+	(*InstanceSetting_GeneralSetting_CustomProfile)(nil),           // 11: memos.api.v1.InstanceSetting.GeneralSetting.CustomProfile
+	(*InstanceSetting_StorageSetting_S3Config)(nil),                // 12: memos.api.v1.InstanceSetting.StorageSetting.S3Config
+	(*InstanceSetting_MemoRelatedSetting_MapSetting)(nil),          // 13: memos.api.v1.InstanceSetting.MemoRelatedSetting.MapSetting
+	(*User)(nil),                  // 14: memos.api.v1.User
+	(*fieldmaskpb.FieldMask)(nil), // 15: google.protobuf.FieldMask
 }
 var file_api_v1_instance_service_proto_depIdxs = []int32{
-	12, // 0: memos.api.v1.InstanceProfile.admin:type_name -> memos.api.v1.User
-	7,  // 1: memos.api.v1.InstanceSetting.general_setting:type_name -> memos.api.v1.InstanceSetting.GeneralSetting
-	8,  // 2: memos.api.v1.InstanceSetting.storage_setting:type_name -> memos.api.v1.InstanceSetting.StorageSetting
-	9,  // 3: memos.api.v1.InstanceSetting.memo_related_setting:type_name -> memos.api.v1.InstanceSetting.MemoRelatedSetting
-	4,  // 4: memos.api.v1.UpdateInstanceSettingRequest.setting:type_name -> memos.api.v1.InstanceSetting
-	13, // 5: memos.api.v1.UpdateInstanceSettingRequest.update_mask:type_name -> google.protobuf.FieldMask
-	10, // 6: memos.api.v1.InstanceSetting.GeneralSetting.custom_profile:type_name -> memos.api.v1.InstanceSetting.GeneralSetting.CustomProfile
+	14, // 0: memos.api.v1.InstanceProfile.admin:type_name -> memos.api.v1.User
+	8,  // 1: memos.api.v1.InstanceSetting.general_setting:type_name -> memos.api.v1.InstanceSetting.GeneralSetting
+	9,  // 2: memos.api.v1.InstanceSetting.storage_setting:type_name -> memos.api.v1.InstanceSetting.StorageSetting
+	10, // 3: memos.api.v1.InstanceSetting.memo_related_setting:type_name -> memos.api.v1.InstanceSetting.MemoRelatedSetting
+	5,  // 4: memos.api.v1.UpdateInstanceSettingRequest.setting:type_name -> memos.api.v1.InstanceSetting
+	15, // 5: memos.api.v1.UpdateInstanceSettingRequest.update_mask:type_name -> google.protobuf.FieldMask
+	11, // 6: memos.api.v1.InstanceSetting.GeneralSetting.custom_profile:type_name -> memos.api.v1.InstanceSetting.GeneralSetting.CustomProfile
 	1,  // 7: memos.api.v1.InstanceSetting.StorageSetting.storage_type:type_name -> memos.api.v1.InstanceSetting.StorageSetting.StorageType
-	11, // 8: memos.api.v1.InstanceSetting.StorageSetting.s3_config:type_name -> memos.api.v1.InstanceSetting.StorageSetting.S3Config
-	3,  // 9: memos.api.v1.InstanceService.GetInstanceProfile:input_type -> memos.api.v1.GetInstanceProfileRequest
-	5,  // 10: memos.api.v1.InstanceService.GetInstanceSetting:input_type -> memos.api.v1.GetInstanceSettingRequest
-	6,  // 11: memos.api.v1.InstanceService.UpdateInstanceSetting:input_type -> memos.api.v1.UpdateInstanceSettingRequest
-	2,  // 12: memos.api.v1.InstanceService.GetInstanceProfile:output_type -> memos.api.v1.InstanceProfile
-	4,  // 13: memos.api.v1.InstanceService.GetInstanceSetting:output_type -> memos.api.v1.InstanceSetting
-	4,  // 14: memos.api.v1.InstanceService.UpdateInstanceSetting:output_type -> memos.api.v1.InstanceSetting
-	12, // [12:15] is the sub-list for method output_type
-	9,  // [9:12] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	12, // 8: memos.api.v1.InstanceSetting.StorageSetting.s3_config:type_name -> memos.api.v1.InstanceSetting.StorageSetting.S3Config
+	13, // 9: memos.api.v1.InstanceSetting.MemoRelatedSetting.map_setting:type_name -> memos.api.v1.InstanceSetting.MemoRelatedSetting.MapSetting
+	2,  // 10: memos.api.v1.InstanceSetting.MemoRelatedSetting.MapSetting.provider:type_name -> memos.api.v1.InstanceSetting.MemoRelatedSetting.MapSetting.MapProvider
+	4,  // 11: memos.api.v1.InstanceService.GetInstanceProfile:input_type -> memos.api.v1.GetInstanceProfileRequest
+	6,  // 12: memos.api.v1.InstanceService.GetInstanceSetting:input_type -> memos.api.v1.GetInstanceSettingRequest
+	7,  // 13: memos.api.v1.InstanceService.UpdateInstanceSetting:input_type -> memos.api.v1.UpdateInstanceSettingRequest
+	3,  // 14: memos.api.v1.InstanceService.GetInstanceProfile:output_type -> memos.api.v1.InstanceProfile
+	5,  // 15: memos.api.v1.InstanceService.GetInstanceSetting:output_type -> memos.api.v1.InstanceSetting
+	5,  // 16: memos.api.v1.InstanceService.UpdateInstanceSetting:output_type -> memos.api.v1.InstanceSetting
+	14, // [14:17] is the sub-list for method output_type
+	11, // [11:14] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_api_v1_instance_service_proto_init() }
@@ -1012,8 +1150,8 @@ func file_api_v1_instance_service_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_instance_service_proto_rawDesc), len(file_api_v1_instance_service_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   10,
+			NumEnums:      3,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
