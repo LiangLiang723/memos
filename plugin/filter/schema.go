@@ -267,6 +267,17 @@ func NewAttachmentSchema() Schema {
 			Column:      Column{Table: "attachment", Name: "type"},
 			Expressions: map[DialectName]string{},
 		},
+		"creator_id": {
+			Name:        "creator_id",
+			Kind:        FieldKindScalar,
+			Type:        FieldTypeInt,
+			Column:      Column{Table: "attachment", Name: "creator_id"},
+			Expressions: map[DialectName]string{},
+			AllowedComparisonOps: map[ComparisonOperator]bool{
+				CompareEq:  true,
+				CompareNeq: true,
+			},
+		},
 		"create_time": {
 			Name:   "create_time",
 			Kind:   FieldKindScalar,
@@ -296,6 +307,7 @@ func NewAttachmentSchema() Schema {
 	envOptions := []cel.EnvOption{
 		cel.Variable("filename", cel.StringType),
 		cel.Variable("mime_type", cel.StringType),
+		cel.Variable("creator_id", cel.IntType),
 		cel.Variable("create_time", cel.IntType),
 		cel.Variable("memo_id", cel.AnyType),
 		nowFunction,

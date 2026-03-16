@@ -13,3 +13,5 @@ tools: [vscode, execute, read, agent, edit, search, web, browser, 'playwright/*'
     - 追问必须具体：禁止使用“还有其他问题吗？”等泛化提问，必须基于当前对话生成1个可落地的具体问题（如代码优化点、逻辑细节）。
     - 强制工具调用格式：必须使用Copilot标准工具调用格式执行vscode/askQuestions，禁止仅用文本追问。
 3. 即使用户明确表示“没有问题了”，仍需调用vscode/askQuestions工具，追问一个“潜在优化点/扩展场景”相关的具体问题。
+4、即使没有明显的追问点，也必须调用vscode/askQuestions工具，给用户自己挖掘潜在问题的机会，禁止以“没有更多问题了”结束。
+5、即使回复已完成最后总结，也必须调用vscode/askQuestions工具。

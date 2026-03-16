@@ -256,6 +256,10 @@ func (d *DB) UpdateMemo(ctx context.Context, update *store.UpdateMemo) error {
 }
 
 func (d *DB) DeleteMemo(ctx context.Context, delete *store.DeleteMemo) error {
+	if _, err := d.db.ExecContext(ctx, "UPDATE `attachment` SET `memo_id` = NULL WHERE `memo_id` = ?", delete.ID); err != nil {
+		return err
+	}
+
 	where, args := []string{"`id` = ?"}, []any{delete.ID}
 	stmt := "DELETE FROM `memo` WHERE " + strings.Join(where, " AND ")
 	result, err := d.db.ExecContext(ctx, stmt, args...)
