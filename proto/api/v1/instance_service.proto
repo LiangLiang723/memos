@@ -158,6 +158,25 @@ message InstanceSetting {
     bool enable_double_click_edit = 4;
     // reactions is the list of reactions.
     repeated string reactions = 7;
+
+    // map_setting is the map provider setting for memo location features.
+    MapSetting map_setting = 8;
+
+    // MapSetting controls map provider and provider-specific credentials.
+    message MapSetting {
+      enum MapProvider {
+        MAP_PROVIDER_UNSPECIFIED = 0;
+        OPEN_STREET_MAP = 1;
+        AMAP = 2;
+      }
+
+      // provider is the selected map provider.
+      MapProvider provider = 1;
+      // amap_api_key is the key for AMap web service APIs.
+      string amap_api_key = 2;
+      // amap_security_key is the optional security key for AMap integrations.
+      string amap_security_key = 3;
+    }
   }
 }
 

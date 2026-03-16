@@ -301,6 +301,15 @@
     },
     "member": "成员",
     "member-list": "成员列表",
+    "map": "地图",
+    "map-settings": {
+      "amap-api-key": "高德 API Key",
+      "amap-api-key-placeholder": "请输入高德 Web 服务 Key",
+      "amap-security-key": "高德安全密钥",
+      "amap-security-key-placeholder": "可选，按高德控制台配置填写",
+      "provider": "地图提供商",
+      "title": "地图设置"
+    },
     "member-section": {
       "admin": "管理员",
       "archive-member": "归档成员",

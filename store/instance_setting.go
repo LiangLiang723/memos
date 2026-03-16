@@ -161,6 +161,12 @@ func (s *Store) GetInstanceMemoRelatedSetting(ctx context.Context) (*storepb.Ins
 	if len(instanceMemoRelatedSetting.Reactions) == 0 {
 		instanceMemoRelatedSetting.Reactions = append(instanceMemoRelatedSetting.Reactions, DefaultReactions...)
 	}
+	if instanceMemoRelatedSetting.MapSetting == nil {
+		instanceMemoRelatedSetting.MapSetting = &storepb.InstanceMapSetting{}
+	}
+	if instanceMemoRelatedSetting.MapSetting.Provider == storepb.MapProvider_MAP_PROVIDER_UNSPECIFIED {
+		instanceMemoRelatedSetting.MapSetting.Provider = storepb.MapProvider_OPEN_STREET_MAP
+	}
 	s.instanceSettingCache.Set(ctx, storepb.InstanceSettingKey_MEMO_RELATED.String(), &storepb.InstanceSetting{
 		Key:   storepb.InstanceSettingKey_MEMO_RELATED,
 		Value: &storepb.InstanceSetting_MemoRelatedSetting{MemoRelatedSetting: instanceMemoRelatedSetting},

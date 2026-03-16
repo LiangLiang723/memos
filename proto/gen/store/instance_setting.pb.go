@@ -80,6 +80,55 @@ func (InstanceSettingKey) EnumDescriptor() ([]byte, []int) {
 	return file_store_instance_setting_proto_rawDescGZIP(), []int{0}
 }
 
+type MapProvider int32
+
+const (
+	MapProvider_MAP_PROVIDER_UNSPECIFIED MapProvider = 0
+	MapProvider_OPEN_STREET_MAP          MapProvider = 1
+	MapProvider_AMAP                     MapProvider = 2
+)
+
+// Enum value maps for MapProvider.
+var (
+	MapProvider_name = map[int32]string{
+		0: "MAP_PROVIDER_UNSPECIFIED",
+		1: "OPEN_STREET_MAP",
+		2: "AMAP",
+	}
+	MapProvider_value = map[string]int32{
+		"MAP_PROVIDER_UNSPECIFIED": 0,
+		"OPEN_STREET_MAP":          1,
+		"AMAP":                     2,
+	}
+)
+
+func (x MapProvider) Enum() *MapProvider {
+	p := new(MapProvider)
+	*p = x
+	return p
+}
+
+func (x MapProvider) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (MapProvider) Descriptor() protoreflect.EnumDescriptor {
+	return file_store_instance_setting_proto_enumTypes[1].Descriptor()
+}
+
+func (MapProvider) Type() protoreflect.EnumType {
+	return &file_store_instance_setting_proto_enumTypes[1]
+}
+
+func (x MapProvider) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use MapProvider.Descriptor instead.
+func (MapProvider) EnumDescriptor() ([]byte, []int) {
+	return file_store_instance_setting_proto_rawDescGZIP(), []int{1}
+}
+
 type InstanceStorageSetting_StorageType int32
 
 const (
@@ -119,11 +168,11 @@ func (x InstanceStorageSetting_StorageType) String() string {
 }
 
 func (InstanceStorageSetting_StorageType) Descriptor() protoreflect.EnumDescriptor {
-	return file_store_instance_setting_proto_enumTypes[1].Descriptor()
+	return file_store_instance_setting_proto_enumTypes[2].Descriptor()
 }
 
 func (InstanceStorageSetting_StorageType) Type() protoreflect.EnumType {
-	return &file_store_instance_setting_proto_enumTypes[1]
+	return &file_store_instance_setting_proto_enumTypes[2]
 }
 
 func (x InstanceStorageSetting_StorageType) Number() protoreflect.EnumNumber {
@@ -650,7 +699,9 @@ type InstanceMemoRelatedSetting struct {
 	// enable_double_click_edit enables editing on double click.
 	EnableDoubleClickEdit bool `protobuf:"varint,4,opt,name=enable_double_click_edit,json=enableDoubleClickEdit,proto3" json:"enable_double_click_edit,omitempty"`
 	// reactions is the list of reactions.
-	Reactions     []string `protobuf:"bytes,7,rep,name=reactions,proto3" json:"reactions,omitempty"`
+	Reactions []string `protobuf:"bytes,7,rep,name=reactions,proto3" json:"reactions,omitempty"`
+	// map_setting is the map provider setting for memo location features.
+	MapSetting    *InstanceMapSetting `protobuf:"bytes,8,opt,name=map_setting,json=mapSetting,proto3" json:"map_setting,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -720,6 +771,76 @@ func (x *InstanceMemoRelatedSetting) GetReactions() []string {
 	return nil
 }
 
+func (x *InstanceMemoRelatedSetting) GetMapSetting() *InstanceMapSetting {
+	if x != nil {
+		return x.MapSetting
+	}
+	return nil
+}
+
+type InstanceMapSetting struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// provider is the selected map provider.
+	Provider MapProvider `protobuf:"varint,1,opt,name=provider,proto3,enum=memos.store.MapProvider" json:"provider,omitempty"`
+	// amap_api_key is the key for AMap web service APIs.
+	AmapApiKey string `protobuf:"bytes,2,opt,name=amap_api_key,json=amapApiKey,proto3" json:"amap_api_key,omitempty"`
+	// amap_security_key is the optional security key for AMap integrations.
+	AmapSecurityKey string `protobuf:"bytes,3,opt,name=amap_security_key,json=amapSecurityKey,proto3" json:"amap_security_key,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *InstanceMapSetting) Reset() {
+	*x = InstanceMapSetting{}
+	mi := &file_store_instance_setting_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InstanceMapSetting) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstanceMapSetting) ProtoMessage() {}
+
+func (x *InstanceMapSetting) ProtoReflect() protoreflect.Message {
+	mi := &file_store_instance_setting_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstanceMapSetting.ProtoReflect.Descriptor instead.
+func (*InstanceMapSetting) Descriptor() ([]byte, []int) {
+	return file_store_instance_setting_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *InstanceMapSetting) GetProvider() MapProvider {
+	if x != nil {
+		return x.Provider
+	}
+	return MapProvider_MAP_PROVIDER_UNSPECIFIED
+}
+
+func (x *InstanceMapSetting) GetAmapApiKey() string {
+	if x != nil {
+		return x.AmapApiKey
+	}
+	return ""
+}
+
+func (x *InstanceMapSetting) GetAmapSecurityKey() string {
+	if x != nil {
+		return x.AmapSecurityKey
+	}
+	return ""
+}
+
 var File_store_instance_setting_proto protoreflect.FileDescriptor
 
 const file_store_instance_setting_proto_rawDesc = "" +
@@ -765,19 +886,30 @@ const file_store_instance_setting_proto_rawDesc = "" +
 	"\bendpoint\x18\x03 \x01(\tR\bendpoint\x12\x16\n" +
 	"\x06region\x18\x04 \x01(\tR\x06region\x12\x16\n" +
 	"\x06bucket\x18\x05 \x01(\tR\x06bucket\x12$\n" +
-	"\x0euse_path_style\x18\x06 \x01(\bR\fusePathStyle\"\x9c\x02\n" +
+	"\x0euse_path_style\x18\x06 \x01(\bR\fusePathStyle\"\xde\x02\n" +
 	"\x1aInstanceMemoRelatedSetting\x12<\n" +
 	"\x1adisallow_public_visibility\x18\x01 \x01(\bR\x18disallowPublicVisibility\x127\n" +
 	"\x18display_with_update_time\x18\x02 \x01(\bR\x15displayWithUpdateTime\x120\n" +
 	"\x14content_length_limit\x18\x03 \x01(\x05R\x12contentLengthLimit\x127\n" +
 	"\x18enable_double_click_edit\x18\x04 \x01(\bR\x15enableDoubleClickEdit\x12\x1c\n" +
-	"\treactions\x18\a \x03(\tR\treactions*q\n" +
+	"\treactions\x18\a \x03(\tR\treactions\x12@\n" +
+	"\vmap_setting\x18\b \x01(\v2\x1f.memos.store.InstanceMapSettingR\n" +
+	"mapSetting\"\x98\x01\n" +
+	"\x12InstanceMapSetting\x124\n" +
+	"\bprovider\x18\x01 \x01(\x0e2\x18.memos.store.MapProviderR\bprovider\x12 \n" +
+	"\famap_api_key\x18\x02 \x01(\tR\n" +
+	"amapApiKey\x12*\n" +
+	"\x11amap_security_key\x18\x03 \x01(\tR\x0famapSecurityKey*q\n" +
 	"\x12InstanceSettingKey\x12$\n" +
 	" INSTANCE_SETTING_KEY_UNSPECIFIED\x10\x00\x12\t\n" +
 	"\x05BASIC\x10\x01\x12\v\n" +
 	"\aGENERAL\x10\x02\x12\v\n" +
 	"\aSTORAGE\x10\x03\x12\x10\n" +
-	"\fMEMO_RELATED\x10\x04B\x9f\x01\n" +
+	"\fMEMO_RELATED\x10\x04*J\n" +
+	"\vMapProvider\x12\x1c\n" +
+	"\x18MAP_PROVIDER_UNSPECIFIED\x10\x00\x12\x13\n" +
+	"\x0fOPEN_STREET_MAP\x10\x01\x12\b\n" +
+	"\x04AMAP\x10\x02B\x9f\x01\n" +
 	"\x0fcom.memos.storeB\x14InstanceSettingProtoP\x01Z)github.com/usememos/memos/proto/gen/store\xa2\x02\x03MSX\xaa\x02\vMemos.Store\xca\x02\vMemos\\Store\xe2\x02\x17Memos\\Store\\GPBMetadata\xea\x02\fMemos::Storeb\x06proto3"
 
 var (
@@ -792,33 +924,37 @@ func file_store_instance_setting_proto_rawDescGZIP() []byte {
 	return file_store_instance_setting_proto_rawDescData
 }
 
-var file_store_instance_setting_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_store_instance_setting_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_store_instance_setting_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_store_instance_setting_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_store_instance_setting_proto_goTypes = []any{
 	(InstanceSettingKey)(0),                 // 0: memos.store.InstanceSettingKey
-	(InstanceStorageSetting_StorageType)(0), // 1: memos.store.InstanceStorageSetting.StorageType
-	(*InstanceSetting)(nil),                 // 2: memos.store.InstanceSetting
-	(*InstanceBasicSetting)(nil),            // 3: memos.store.InstanceBasicSetting
-	(*InstanceGeneralSetting)(nil),          // 4: memos.store.InstanceGeneralSetting
-	(*InstanceCustomProfile)(nil),           // 5: memos.store.InstanceCustomProfile
-	(*InstanceStorageSetting)(nil),          // 6: memos.store.InstanceStorageSetting
-	(*StorageS3Config)(nil),                 // 7: memos.store.StorageS3Config
-	(*InstanceMemoRelatedSetting)(nil),      // 8: memos.store.InstanceMemoRelatedSetting
+	(MapProvider)(0),                        // 1: memos.store.MapProvider
+	(InstanceStorageSetting_StorageType)(0), // 2: memos.store.InstanceStorageSetting.StorageType
+	(*InstanceSetting)(nil),                 // 3: memos.store.InstanceSetting
+	(*InstanceBasicSetting)(nil),            // 4: memos.store.InstanceBasicSetting
+	(*InstanceGeneralSetting)(nil),          // 5: memos.store.InstanceGeneralSetting
+	(*InstanceCustomProfile)(nil),           // 6: memos.store.InstanceCustomProfile
+	(*InstanceStorageSetting)(nil),          // 7: memos.store.InstanceStorageSetting
+	(*StorageS3Config)(nil),                 // 8: memos.store.StorageS3Config
+	(*InstanceMemoRelatedSetting)(nil),      // 9: memos.store.InstanceMemoRelatedSetting
+	(*InstanceMapSetting)(nil),              // 10: memos.store.InstanceMapSetting
 }
 var file_store_instance_setting_proto_depIdxs = []int32{
-	0, // 0: memos.store.InstanceSetting.key:type_name -> memos.store.InstanceSettingKey
-	3, // 1: memos.store.InstanceSetting.basic_setting:type_name -> memos.store.InstanceBasicSetting
-	4, // 2: memos.store.InstanceSetting.general_setting:type_name -> memos.store.InstanceGeneralSetting
-	6, // 3: memos.store.InstanceSetting.storage_setting:type_name -> memos.store.InstanceStorageSetting
-	8, // 4: memos.store.InstanceSetting.memo_related_setting:type_name -> memos.store.InstanceMemoRelatedSetting
-	5, // 5: memos.store.InstanceGeneralSetting.custom_profile:type_name -> memos.store.InstanceCustomProfile
-	1, // 6: memos.store.InstanceStorageSetting.storage_type:type_name -> memos.store.InstanceStorageSetting.StorageType
-	7, // 7: memos.store.InstanceStorageSetting.s3_config:type_name -> memos.store.StorageS3Config
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	0,  // 0: memos.store.InstanceSetting.key:type_name -> memos.store.InstanceSettingKey
+	4,  // 1: memos.store.InstanceSetting.basic_setting:type_name -> memos.store.InstanceBasicSetting
+	5,  // 2: memos.store.InstanceSetting.general_setting:type_name -> memos.store.InstanceGeneralSetting
+	7,  // 3: memos.store.InstanceSetting.storage_setting:type_name -> memos.store.InstanceStorageSetting
+	9,  // 4: memos.store.InstanceSetting.memo_related_setting:type_name -> memos.store.InstanceMemoRelatedSetting
+	6,  // 5: memos.store.InstanceGeneralSetting.custom_profile:type_name -> memos.store.InstanceCustomProfile
+	2,  // 6: memos.store.InstanceStorageSetting.storage_type:type_name -> memos.store.InstanceStorageSetting.StorageType
+	8,  // 7: memos.store.InstanceStorageSetting.s3_config:type_name -> memos.store.StorageS3Config
+	10, // 8: memos.store.InstanceMemoRelatedSetting.map_setting:type_name -> memos.store.InstanceMapSetting
+	1,  // 9: memos.store.InstanceMapSetting.provider:type_name -> memos.store.MapProvider
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_store_instance_setting_proto_init() }
@@ -837,8 +973,8 @@ func file_store_instance_setting_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_store_instance_setting_proto_rawDesc), len(file_store_instance_setting_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   7,
+			NumEnums:      3,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
