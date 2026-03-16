@@ -250,7 +250,8 @@ const LeafletMap = (props: MapProps) => {
       className="w-full h-72"
       center={position}
       zoom={13}
-      scrollWheelZoom={false}
+      scrollWheelZoom={true}
+      touchZoom={true}
       zoomControl={false}
       attributionControl={false}
     >

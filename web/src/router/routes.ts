@@ -5,6 +5,7 @@ export const ROUTES = {
   ARCHIVED: "/archived",
   SETTING: "/setting",
   EXPLORE: "/explore",
+  MAP: "/map",
   AUTH: "/auth",
 } as const;
 

@@ -1,13 +1,11 @@
-import { timestampDate } from "@bufbuild/protobuf/wkt";
-import dayjs from "dayjs";
 import L, { DivIcon } from "leaflet";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
-import { ArrowUpRightIcon, MapPinIcon } from "lucide-react";
-import { useEffect, useMemo } from "react";
-import { MapContainer, Marker, Popup, useMap } from "react-leaflet";
+import { MapPinIcon, XIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { MapContainer, Marker, useMap } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
-import { Link } from "react-router-dom";
+import MemoView from "@/components/MemoView/MemoView";
 import { defaultMarkerIcon, ThemedTileLayer } from "@/components/map/map-utils";
 import { useInfiniteMemos } from "@/hooks/useMemoQueries";
 import { cn } from "@/lib/utils";
@@ -15,7 +13,8 @@ import { State } from "@/types/proto/api/v1/common_pb";
 import { Memo } from "@/types/proto/api/v1/memo_service_pb";
 
 interface Props {
-  creator: string;
+  creator?: string;
+  filter?: string;
   className?: string;
 }
 
@@ -52,66 +51,104 @@ const MapFitBounds = ({ memos }: { memos: Memo[] }) => {
   return null;
 };
 
-const UserMemoMap = ({ creator, className }: Props) => {
-  const creatorId = useMemo(() => extractUserIdFromName(creator), [creator]);
+const UserMemoMap = ({ creator, filter, className }: Props) => {
+  const creatorId = useMemo(() => (creator ? extractUserIdFromName(creator) : ""), [creator]);
+  const combinedFilter = useMemo(() => {
+    const conditions = [creatorId ? `creator_id == ${creatorId}` : "", filter || ""].filter(Boolean);
+    return conditions.length > 0 ? conditions.join(" && ") : undefined;
+  }, [creatorId, filter]);
 
   const { data, isLoading } = useInfiniteMemos({
     state: State.NORMAL,
     orderBy: "display_time desc",
     pageSize: 1000,
-    filter: `creator_id == ${creatorId}`,
+    ...(combinedFilter ? { filter: combinedFilter } : {}),
   });
 
   const memosWithLocation = useMemo(() => data?.pages.flatMap((page) => page.memos).filter((memo) => memo.location) || [], [data]);
+  const [selectedMemoName, setSelectedMemoName] = useState<string | undefined>(undefined);
+  const [animateCard, setAnimateCard] = useState(false);
+  const hadCardOpenRef = useRef(false);
+  const selectedMemo = useMemo(
+    () => memosWithLocation.find((memo) => memo.name === selectedMemoName),
+    [memosWithLocation, selectedMemoName],
+  );
+
+  useEffect(() => {
+    const hasSelectedCard = Boolean(selectedMemoName);
+    setAnimateCard(hasSelectedCard && !hadCardOpenRef.current);
+    hadCardOpenRef.current = hasSelectedCard;
+  }, [selectedMemoName]);
+
+  useEffect(() => {
+    if (selectedMemoName && !memosWithLocation.some((memo) => memo.name === selectedMemoName)) {
+      setSelectedMemoName(undefined);
+    }
+  }, [memosWithLocation, selectedMemoName]);
 
   if (isLoading) return null;
 
   const defaultCenter = { lat: 48.8566, lng: 2.3522 };
 
   return (
-    <div className={cn("relative z-0 w-full h-[380px] rounded-xl overflow-hidden border border-border shadow-sm", className)}>
-      {memosWithLocation.length === 0 && (
-        <div className="absolute inset-0 z-[1000] flex items-center justify-center pointer-events-none">
-          <div className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-background/70 px-4 py-2 shadow-sm backdrop-blur-sm">
-            <MapPinIcon className="h-5 w-5 text-muted-foreground opacity-60" />
-            <p className="text-xs font-medium text-muted-foreground">No location data found</p>
+    <div className={cn("relative z-0 w-full h-full min-h-0 flex flex-col gap-3", className)}>
+      <div className="relative w-full min-h-[260px] flex-1 rounded-xl overflow-hidden border border-border shadow-sm transition-all duration-300">
+        {memosWithLocation.length === 0 && (
+          <div className="absolute inset-0 z-[1000] flex items-center justify-center pointer-events-none">
+            <div className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-background/70 px-4 py-2 shadow-sm backdrop-blur-sm">
+              <MapPinIcon className="h-5 w-5 text-muted-foreground opacity-60" />
+              <p className="text-xs font-medium text-muted-foreground">No location data found</p>
+            </div>
           </div>
+        )}
+
+        <MapContainer center={defaultCenter} zoom={2} className="h-full w-full z-0" scrollWheelZoom={true} touchZoom={true} attributionControl={false}>
+          <ThemedTileLayer />
+          <MarkerClusterGroup
+            chunkedLoading
+            iconCreateFunction={createClusterCustomIcon}
+            maxClusterRadius={40}
+            spiderfyOnMaxZoom
+            showCoverageOnHover={false}
+          >
+            {memosWithLocation.map((memo) => (
+              <Marker
+                key={memo.name}
+                position={[memo.location!.latitude, memo.location!.longitude]}
+                icon={defaultMarkerIcon}
+                eventHandlers={{
+                  click: () => {
+                    setSelectedMemoName(memo.name);
+                  },
+                }}
+              />
+            ))}
+          </MarkerClusterGroup>
+          <MapFitBounds memos={memosWithLocation} />
+        </MapContainer>
+      </div>
+
+      {selectedMemo && (
+        <div
+          className={cn(
+            "rounded-xl border border-border bg-background p-3 shadow-sm transition-all duration-300 ease-out",
+            animateCard && "animate-in slide-in-from-bottom-2 fade-in-0",
+          )}
+        >
+          <div className="mb-2 flex items-center justify-end">
+            <button
+              type="button"
+              onClick={() => setSelectedMemoName(undefined)}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent"
+              aria-label="Close selected memo"
+              title="Close"
+            >
+              <XIcon className="h-4 w-4" />
+            </button>
+          </div>
+          <MemoView memo={selectedMemo} parentPage="/map" compact={false} className="mb-0" />
         </div>
       )}
-
-      <MapContainer center={defaultCenter} zoom={2} className="h-full w-full z-0" scrollWheelZoom attributionControl={false}>
-        <ThemedTileLayer />
-        <MarkerClusterGroup
-          chunkedLoading
-          iconCreateFunction={createClusterCustomIcon}
-          maxClusterRadius={40}
-          spiderfyOnMaxZoom
-          showCoverageOnHover={false}
-        >
-          {memosWithLocation.map((memo) => (
-            <Marker key={memo.name} position={[memo.location!.latitude, memo.location!.longitude]} icon={defaultMarkerIcon}>
-              <Popup closeButton={false} className="w-48!">
-                <div className="flex flex-col p-0.5">
-                  <div className="flex items-center justify-between border-b border-border pb-1 mb-1">
-                    <span className="text-[10px] font-medium text-muted-foreground">
-                      {memo.displayTime && dayjs(timestampDate(memo.displayTime)).format("YYYY-MM-DD")}
-                    </span>
-                    <Link
-                      to={`/memos/${memo.name.split("/").pop()}`}
-                      className="flex items-center gap-0.5 text-[10px] text-primary hover:opacity-80"
-                    >
-                      View
-                      <ArrowUpRightIcon className="h-3 w-3" />
-                    </Link>
-                  </div>
-                  <div className="line-clamp-3 py-0.5 text-xs font-sans leading-snug text-foreground">{memo.snippet || "No content"}</div>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-        </MarkerClusterGroup>
-        <MapFitBounds memos={memosWithLocation} />
-      </MapContainer>
     </div>
   );
 };

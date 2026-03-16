@@ -47,7 +47,7 @@ const RootLayout = () => {
       {sm && (
         <div
           className={cn(
-            "group flex flex-col justify-start items-start fixed top-0 left-0 select-none h-full bg-sidebar",
+            "flex flex-col justify-start items-start fixed top-0 left-0 select-none h-full bg-sidebar",
             "w-16 px-2",
             "border-r border-border",
           )}

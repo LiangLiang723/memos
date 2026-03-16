@@ -1,4 +1,4 @@
-import { BellIcon, EarthIcon, LibraryIcon, PaperclipIcon, UserCircleIcon } from "lucide-react";
+import { BellIcon, EarthIcon, LibraryIcon, MapIcon, PaperclipIcon, UserCircleIcon } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import useCurrentUser from "@/hooks/useCurrentUser";
@@ -46,6 +46,12 @@ const Navigation = (props: Props) => {
     title: t("common.attachments"),
     icon: <PaperclipIcon className="w-5 h-auto shrink-0 md:w-6" />,
   };
+  const mapNavLink: NavLinkItem = {
+    id: "header-map",
+    path: Routes.MAP,
+    title: "地图",
+    icon: <MapIcon className="w-5 h-auto shrink-0 md:w-6" />,
+  };
   const unreadCount = notifications.filter((n) => n.status === UserNotification_Status.UNREAD).length;
   const inboxNavLink: NavLinkItem = {
     id: "header-inbox",
@@ -70,7 +76,7 @@ const Navigation = (props: Props) => {
   };
 
   const navLinks: NavLinkItem[] = currentUser
-    ? [homeNavLink, exploreNavLink, attachmentsNavLink, inboxNavLink]
+    ? [homeNavLink, exploreNavLink, attachmentsNavLink, mapNavLink, inboxNavLink]
     : [exploreNavLink, signInNavLink];
 
   return (
@@ -80,37 +86,38 @@ const Navigation = (props: Props) => {
           <MemosLogo collapsed={collapsed} />
         </NavLink>
         {navLinks.map((navLink) => (
-          <NavLink
-            className={({ isActive }) =>
-              cn(
-                "px-1.5 py-1.5 rounded-xl md:rounded-2xl border flex flex-row items-center text-base md:text-lg text-sidebar-foreground transition-colors",
-                collapsed ? "" : "w-full px-4",
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground border-sidebar-accent-border drop-shadow"
-                  : "border-transparent hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:border-sidebar-accent-border opacity-80",
-              )
-            }
-            key={navLink.id}
-            to={navLink.path}
-            id={navLink.id}
-            viewTransition
-          >
-            {props.collapsed ? (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div>{navLink.icon}</div>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <p>{navLink.title}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : (
-              navLink.icon
-            )}
-            {!props.collapsed && <span className="ml-2.5 truncate">{navLink.title}</span>}
-          </NavLink>
+          <div key={navLink.id} className="w-full">
+            <NavLink
+              className={({ isActive }) =>
+                cn(
+                  "px-1.5 py-1.5 rounded-xl md:rounded-2xl border flex flex-row items-center text-base md:text-lg text-sidebar-foreground transition-colors",
+                  collapsed ? "" : "w-full px-4",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground border-sidebar-accent-border drop-shadow"
+                    : "border-transparent hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:border-sidebar-accent-border opacity-80",
+                )
+              }
+              to={navLink.path}
+              id={navLink.id}
+              viewTransition
+            >
+              {props.collapsed ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>{navLink.icon}</div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p>{navLink.title}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                navLink.icon
+              )}
+              {!props.collapsed && <span className="ml-2.5 truncate">{navLink.title}</span>}
+            </NavLink>
+          </div>
         ))}
       </div>
       {currentUser && (

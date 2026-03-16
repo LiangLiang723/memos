@@ -1,6 +1,11 @@
+import { LatLng } from "leaflet";
 import * as exifr from "exifr";
 import { InfoIcon, X } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
+import { LocationPicker } from "@/components/map";
+import { resolveLocationLabel } from "@/components/map/geocoding";
+import { getMapSettingWithDefaults } from "@/components/map/map-setting";
+import { useInstance } from "@/contexts/InstanceContext";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
@@ -17,9 +22,13 @@ interface ReadableDetails {
   shootingParams: string;
   filePath: string;
   location: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: Props) {
+  const { memoRelatedSetting } = useInstance();
+  const mapSetting = getMapSettingWithDefaults(memoRelatedSetting.mapSetting);
   const MAX_SCALE = 5;
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [scale, setScale] = useState(1);
@@ -79,6 +88,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
     imageUrl: string,
     blob: Blob,
     imageEl: HTMLImageElement | null,
+    locationLabel?: string,
   ): ReadableDetails => {
     const unavailable = "暂无";
     const fileNameFromUrl = (() => {
@@ -150,7 +160,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
     ]
       .filter(Boolean)
       .join(" · ");
-    const locationText = locationName ? (destinationDistance ? `${locationName}附近${destinationDistance}` : locationName) : gpsText;
+    const locationText = locationLabel || (locationName ? (destinationDistance ? `${locationName}附近${destinationDistance}` : locationName) : gpsText);
 
     const shotTime =
       formatDateTime(exifDetails.DateTimeOriginal) ||
@@ -164,6 +174,8 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
       shootingParams: cameraParts.join(" ") || unavailable,
       filePath: fullPath || unavailable,
       location: locationText || unavailable,
+      latitude: lat ?? undefined,
+      longitude: lng ?? undefined,
     };
   };
 
@@ -201,7 +213,21 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
       const exifData = await exifr.parse(blob, { tiff: true, xmp: true, icc: true, iptc: true, jfif: true, ihdr: true });
       const exifDetails = exifData && typeof exifData === "object" ? (exifData as Record<string, unknown>) : {};
 
-      setReadableDetails(buildReadableDetails(exifDetails, imageUrl, blob, imageEl));
+      const lat = toNumber(exifDetails.latitude ?? exifDetails.GPSLatitude);
+      const lng = toNumber(exifDetails.longitude ?? exifDetails.GPSLongitude);
+      let locationLabel: string | undefined;
+      if (lat !== null && lng !== null) {
+        locationLabel = await resolveLocationLabel({
+          lat,
+          lng,
+          provider: mapSetting.provider,
+          amapApiKey: mapSetting.amapApiKey,
+          amapSecurityKey: mapSetting.amapSecurityKey,
+          fallbackLabel: "",
+        });
+      }
+
+      setReadableDetails(buildReadableDetails(exifDetails, imageUrl, blob, imageEl, locationLabel));
     } catch (error) {
       setReadableDetails(null);
       setDetailsError(error instanceof Error ? error.message : "读取图片详细数据失败");
@@ -255,7 +281,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
   useEffect(() => {
     if (!detailsOpen || !open) return;
     void loadImageDetails();
-  }, [detailsOpen, open, currentIndex]);
+  }, [detailsOpen, open, currentIndex, mapSetting.provider, mapSetting.amapApiKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -365,22 +391,49 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
           </Button>
         </div>
 
-        {/* Reset transform button - fixed bottom center, match close button style and theme */}
+        {/* Bottom controls */}
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-          <Button
-            variant="secondary"
-            size="sm"
-            className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
-            aria-label="恢复原始比例"
-            onClick={() => {
-              setScale(1);
-              setTranslate({ x: 0, y: 0 });
-              initialPinchDistanceRef.current = null;
-              initialScaleRef.current = 1;
-            }}
-          >
-            恢复原始比例
-          </Button>
+          <div className="flex items-center gap-2">
+            {imgUrls.length > 1 && (
+              <>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
+                  aria-label="上一张"
+                  onClick={() => setCurrentIndex((prev) => Math.max(prev - 1, 0))}
+                  disabled={safeIndex === 0}
+                >
+                  上一张
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
+                  aria-label="下一张"
+                  onClick={() => setCurrentIndex((prev) => Math.min(prev + 1, imgUrls.length - 1))}
+                  disabled={safeIndex === imgUrls.length - 1}
+                >
+                  下一张
+                </Button>
+              </>
+            )}
+
+            <Button
+              variant="secondary"
+              size="sm"
+              className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
+              aria-label="恢复原始比例"
+              onClick={() => {
+                setScale(1);
+                setTranslate({ x: 0, y: 0 });
+                initialPinchDistanceRef.current = null;
+                initialScaleRef.current = 1;
+              }}
+            >
+              恢复原始比例
+            </Button>
+          </div>
         </div>
 
         {detailsOpen && (
@@ -426,6 +479,11 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
                       </Button>
                     )}
                   </p>
+                  {readableDetails.location !== "暂无" && readableDetails.latitude !== undefined && readableDetails.longitude !== undefined && (
+                    <div className="overflow-hidden rounded-lg border border-border/40">
+                      <LocationPicker latlng={new LatLng(readableDetails.latitude, readableDetails.longitude)} readonly={true} />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -485,7 +543,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
                 setScale(newScale);
                 setTranslate((prev) => clampTranslate(newScale, prev));
                 e.preventDefault();
-              } else if (e.touches.length === 1 && isPanningRef.current) {
+              } else if (e.touches.length === 1 && isPanningRef.current && scale > 1) {
                 const t = e.touches[0];
                 setTranslate(
                   clampTranslate(scale, {
@@ -501,6 +559,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
                 initialPinchDistanceRef.current = null;
                 initialScaleRef.current = scale;
               }
+
               if (e.touches.length === 0) {
                 isPanningRef.current = false;
               }
