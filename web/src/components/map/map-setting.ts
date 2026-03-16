@@ -4,6 +4,7 @@ import {
   InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider,
   InstanceSetting_MemoRelatedSetting_MapSettingSchema,
 } from "@/types/proto/api/v1/instance_service_pb";
+import { wgs84ToGcj02 } from "./coord";
 
 export const IMAGE_LOCATION_CANDIDATE_DISTANCE_STORAGE_KEY = "memos.image-location-candidate-distance-meters";
 export const DEFAULT_IMAGE_LOCATION_CANDIDATE_DISTANCE_METERS = 500;
@@ -34,7 +35,8 @@ export const buildExternalMapUrl = (
   lng: number,
 ): string => {
   if (isAmapProvider(provider)) {
-    return `https://uri.amap.com/marker?position=${lng},${lat}`;
+    const [gcjLng, gcjLat] = wgs84ToGcj02(lng, lat);
+    return `https://uri.amap.com/marker?position=${gcjLng},${gcjLat}`;
   }
   return `https://www.google.com/maps?q=${lat},${lng}`;
 };

@@ -1,4 +1,4 @@
-import L, { DivIcon } from "leaflet";
+import L, { DivIcon, Marker as LeafletMarker } from "leaflet";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import { MapPinIcon, XIcon } from "lucide-react";
@@ -22,6 +22,14 @@ interface ClusterGroup {
   getChildCount(): number;
 }
 
+interface ClusterLayer {
+  getAllChildMarkers(): LeafletMarker[];
+}
+
+interface ClusterClickEvent {
+  layer: ClusterLayer;
+}
+
 const createClusterCustomIcon = (cluster: ClusterGroup) => {
   return new DivIcon({
     html: `<span class="flex items-center justify-center w-full h-full bg-primary text-primary-foreground text-xs font-bold rounded-full shadow-md border-2 border-background">${cluster.getChildCount()}</span>`,
@@ -34,6 +42,9 @@ const extractUserIdFromName = (name: string): string => {
   const match = name.match(/users\/(\d+)/);
   return match ? match[1] : "";
 };
+
+const INITIAL_VISIBLE_MEMO_COUNT = 23;
+const LOAD_MORE_MEMO_STEP = 9;
 
 const MapFitBounds = ({ memos }: { memos: Memo[] }) => {
   const map = useMap();
@@ -66,33 +77,74 @@ const UserMemoMap = ({ creator, filter, className }: Props) => {
   });
 
   const memosWithLocation = useMemo(() => data?.pages.flatMap((page) => page.memos).filter((memo) => memo.location) || [], [data]);
-  const [selectedMemoName, setSelectedMemoName] = useState<string | undefined>(undefined);
+  const [selectedMemoNames, setSelectedMemoNames] = useState<string[]>([]);
+  const [visibleMemoCount, setVisibleMemoCount] = useState(INITIAL_VISIBLE_MEMO_COUNT);
   const [animateCard, setAnimateCard] = useState(false);
   const hadCardOpenRef = useRef(false);
-  const selectedMemo = useMemo(
-    () => memosWithLocation.find((memo) => memo.name === selectedMemoName),
-    [memosWithLocation, selectedMemoName],
+  const listScrollRef = useRef<HTMLDivElement | null>(null);
+  const selectedMemos = useMemo(
+    () => memosWithLocation.filter((memo) => selectedMemoNames.includes(memo.name)),
+    [memosWithLocation, selectedMemoNames],
   );
 
-  useEffect(() => {
-    const hasSelectedCard = Boolean(selectedMemoName);
-    setAnimateCard(hasSelectedCard && !hadCardOpenRef.current);
-    hadCardOpenRef.current = hasSelectedCard;
-  }, [selectedMemoName]);
+  const hasSelectedMemos = selectedMemos.length > 0;
+
+  const handleSelectMemo = (memoName: string) => {
+    setSelectedMemoNames([memoName]);
+  };
+
+  const handleSelectCluster = (event: ClusterClickEvent) => {
+    const childMemoNames = event.layer
+      .getAllChildMarkers()
+      .map((marker) => marker.options.title)
+      .filter((name): name is string => Boolean(name));
+    if (childMemoNames.length === 0) {
+      return;
+    }
+
+    setSelectedMemoNames(Array.from(new Set(childMemoNames)));
+  };
 
   useEffect(() => {
-    if (selectedMemoName && !memosWithLocation.some((memo) => memo.name === selectedMemoName)) {
-      setSelectedMemoName(undefined);
+    const hasSelectedCard = selectedMemoNames.length > 0;
+    setAnimateCard(hasSelectedCard && !hadCardOpenRef.current);
+    hadCardOpenRef.current = hasSelectedCard;
+  }, [selectedMemoNames]);
+
+  useEffect(() => {
+    setVisibleMemoCount(INITIAL_VISIBLE_MEMO_COUNT);
+    if (listScrollRef.current) {
+      listScrollRef.current.scrollTop = 0;
     }
-  }, [memosWithLocation, selectedMemoName]);
+  }, [selectedMemoNames]);
+
+  useEffect(() => {
+    if (selectedMemoNames.length === 0) {
+      return;
+    }
+
+    const existingMemoNameSet = new Set(memosWithLocation.map((memo) => memo.name));
+    const nextSelectedMemoNames = selectedMemoNames.filter((memoName) => existingMemoNameSet.has(memoName));
+    if (nextSelectedMemoNames.length !== selectedMemoNames.length) {
+      setSelectedMemoNames(nextSelectedMemoNames);
+    }
+  }, [memosWithLocation, selectedMemoNames]);
 
   if (isLoading) return null;
 
   const defaultCenter = { lat: 48.8566, lng: 2.3522 };
+  const visibleSelectedMemos = selectedMemos.slice(0, visibleMemoCount);
+  const hasMoreSelectedMemos = selectedMemos.length > visibleMemoCount;
+  const remainingSelectedMemoCount = Math.max(selectedMemos.length - visibleMemoCount, 0);
 
   return (
-    <div className={cn("relative z-0 w-full h-full min-h-0 flex flex-col gap-3", className)}>
-      <div className="relative w-full min-h-[260px] flex-1 rounded-xl overflow-hidden border border-border shadow-sm transition-all duration-300">
+    <div className={cn("relative z-0 w-full h-full min-h-0 flex flex-col gap-3 overflow-hidden", className)}>
+      <div
+        className={cn(
+          "relative w-full rounded-xl overflow-hidden border border-border shadow-sm transition-all duration-300 shrink-0",
+          hasSelectedMemos ? "h-[42%] min-h-[240px]" : "min-h-[260px] flex-1",
+        )}
+      >
         {memosWithLocation.length === 0 && (
           <div className="absolute inset-0 z-[1000] flex items-center justify-center pointer-events-none">
             <div className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-background/70 px-4 py-2 shadow-sm backdrop-blur-sm">
@@ -102,23 +154,35 @@ const UserMemoMap = ({ creator, filter, className }: Props) => {
           </div>
         )}
 
-        <MapContainer center={defaultCenter} zoom={2} className="h-full w-full z-0" scrollWheelZoom={true} touchZoom={true} attributionControl={false}>
+        <MapContainer
+          center={defaultCenter}
+          zoom={2}
+          className="h-full w-full z-0"
+          scrollWheelZoom={true}
+          touchZoom={true}
+          attributionControl={false}
+        >
           <ThemedTileLayer />
           <MarkerClusterGroup
             chunkedLoading
             iconCreateFunction={createClusterCustomIcon}
             maxClusterRadius={40}
-            spiderfyOnMaxZoom
+            spiderfyOnMaxZoom={false}
+            zoomToBoundsOnClick={false}
             showCoverageOnHover={false}
+            eventHandlers={{
+              clusterclick: handleSelectCluster,
+            }}
           >
             {memosWithLocation.map((memo) => (
               <Marker
                 key={memo.name}
                 position={[memo.location!.latitude, memo.location!.longitude]}
                 icon={defaultMarkerIcon}
+                title={memo.name}
                 eventHandlers={{
                   click: () => {
-                    setSelectedMemoName(memo.name);
+                    handleSelectMemo(memo.name);
                   },
                 }}
               />
@@ -128,25 +192,46 @@ const UserMemoMap = ({ creator, filter, className }: Props) => {
         </MapContainer>
       </div>
 
-      {selectedMemo && (
+      {hasSelectedMemos && (
         <div
+          ref={listScrollRef}
           className={cn(
-            "rounded-xl border border-border bg-background p-3 shadow-sm transition-all duration-300 ease-out",
+            "rounded-xl border border-border bg-background p-3 shadow-sm transition-all duration-300 ease-out flex-1 min-h-0 overflow-y-auto",
             animateCard && "animate-in slide-in-from-bottom-2 fade-in-0",
           )}
         >
-          <div className="mb-2 flex items-center justify-end">
-            <button
-              type="button"
-              onClick={() => setSelectedMemoName(undefined)}
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent"
-              aria-label="Close selected memo"
-              title="Close"
-            >
-              <XIcon className="h-4 w-4" />
-            </button>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="text-xs text-muted-foreground">
+              已显示 {visibleSelectedMemos.length} / {selectedMemos.length} 条
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedMemoNames([])}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent"
+                aria-label="Close selected memo"
+                title="Close"
+              >
+                <XIcon className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-          <MemoView memo={selectedMemo} parentPage="/map" compact={false} className="mb-0" />
+          <div className="space-y-3">
+            {visibleSelectedMemos.map((memo) => (
+              <MemoView key={`${memo.name}-${memo.displayTime}`} memo={memo} parentPage="/map" compact={false} className="mb-0" />
+            ))}
+          </div>
+          {hasMoreSelectedMemos && (
+            <div className="mt-3 flex justify-center">
+              <button
+                type="button"
+                className="inline-flex items-center rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-accent"
+                onClick={() => setVisibleMemoCount((previousCount) => previousCount + LOAD_MORE_MEMO_STEP)}
+              >
+                加载更多（剩余 {remainingSelectedMemoCount} 条）
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -42,11 +42,7 @@ export const LocationDialog = ({
         </VisuallyHidden>
         <div className="flex flex-col">
           <div className="w-full h-64 overflow-hidden rounded-t-md bg-muted/30">
-            <LocationPicker
-              key={open ? "location-picker-open" : "location-picker-closed"}
-              latlng={position}
-              onChange={onPositionChange}
-            />
+            <LocationPicker key={open ? "location-picker-open" : "location-picker-closed"} latlng={position} onChange={onPositionChange} />
           </div>
           <div className="w-full flex flex-col p-3 gap-3">
             <div className="grid grid-cols-2 gap-3">
@@ -129,9 +125,7 @@ export const LocationDialog = ({
 
               {!isGeocodingLoading && candidates && candidates.length > 0 && (
                 <div className="grid gap-1">
-                  <Label className="text-xs text-muted-foreground">
-                    附近可选地点
-                  </Label>
+                  <Label className="text-xs text-muted-foreground">附近可选地点</Label>
                   <div className="flex flex-wrap gap-1.5">
                     {candidates.map((candidate) => {
                       const selected = placeholder.trim() === candidate.trim();

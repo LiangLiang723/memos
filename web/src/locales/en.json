@@ -123,10 +123,14 @@
     "any-thoughts": "Any thoughts...",
     "exit-focus-mode": "Exit Focus Mode",
     "focus-mode": "Focus Mode",
+    "location-permission-denied": "Location permission denied. Please allow location in browser settings and use HTTPS.",
+    "location-position-unavailable": "Location information unavailable",
+    "location-unavailable": "Unable to get current location",
     "no-changes-detected": "No changes detected",
     "save": "Save",
     "saving": "Saving...",
-    "slash-commands": "Type `/` for commands"
+    "slash-commands": "Type `/` for commands",
+    "use-first-photo-shot-time": "Read time"
   },
   "filters": {
     "has-code": "hasCode",

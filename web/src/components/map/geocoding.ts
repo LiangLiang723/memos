@@ -1,5 +1,6 @@
 import SparkMD5 from "spark-md5";
 import { InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider } from "@/types/proto/api/v1/instance_service_pb";
+import { wgs84ToGcj02 } from "./coord";
 
 const OSM_GEOCODING_ENDPOINT = "https://nominatim.openstreetmap.org/reverse";
 const AMAP_REVERSE_GEOCODING_ENDPOINT = "https://restapi.amap.com/v3/geocode/regeo";
@@ -87,7 +88,9 @@ function withAreaSuffix(primary: string | undefined, district: string | undefine
   }
 
   const normalizedPrimary = primary.trim();
-  const suffixes = [district?.trim(), city?.trim()].filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index);
+  const suffixes = [district?.trim(), city?.trim()].filter(
+    (value, index, values): value is string => Boolean(value) && values.indexOf(value) === index,
+  );
   if (suffixes.length === 0) {
     return normalizedPrimary;
   }
@@ -121,7 +124,11 @@ function buildAmapDebugLabel(
   response?: { status?: string; infocode?: string; info?: string },
   reason?: string,
 ): string {
-  const parts = [response?.status ? `status=${response.status}` : "", response?.infocode ? `infocode=${response.infocode}` : "", response?.info || reason || ""]
+  const parts = [
+    response?.status ? `status=${response.status}` : "",
+    response?.infocode ? `infocode=${response.infocode}` : "",
+    response?.info || reason || "",
+  ]
     .filter(Boolean)
     .join(" ");
   return parts ? `${fallbackLabel} [${parts}]` : fallbackLabel;
@@ -203,7 +210,11 @@ function scorePOI(poi: AMapPOI): number {
   return score;
 }
 
-function pickNearestAmapPOI(data: AMapReverseGeocodingResponse, district: string | undefined, city: string | undefined): string | undefined {
+function pickNearestAmapPOI(
+  data: AMapReverseGeocodingResponse,
+  district: string | undefined,
+  city: string | undefined,
+): string | undefined {
   const nearestPOI = (data.regeocode?.pois ?? [])
     .filter((poi) => poi.name?.trim())
     .map((poi) => ({
@@ -240,7 +251,9 @@ async function resolveAmapLocationLabel(
     return debugLabel;
   }
   const areaData = await areaDataPromise;
-  const city = Array.isArray(areaData?.regeocode?.addressComponent?.city) ? areaData?.regeocode?.addressComponent?.city[0] : areaData?.regeocode?.addressComponent?.city;
+  const city = Array.isArray(areaData?.regeocode?.addressComponent?.city)
+    ? areaData?.regeocode?.addressComponent?.city[0]
+    : areaData?.regeocode?.addressComponent?.city;
   const district = areaData?.regeocode?.addressComponent?.district;
   const nearestPOIName = pickNearestAmapPOI({ status: expandedPOIs?.status, regeocode: { pois: expandedPOIs?.pois } }, district, city);
   if (nearestPOIName) {
@@ -259,7 +272,11 @@ async function resolveAmapLocationLabel(
     return nearestPOI;
   }
 
-  const primary = pickFirstNonEmpty([data.regeocode?.addressComponent?.neighborhood?.name, data.regeocode?.addressComponent?.township, city]);
+  const primary = pickFirstNonEmpty([
+    data.regeocode?.addressComponent?.neighborhood?.name,
+    data.regeocode?.addressComponent?.township,
+    city,
+  ]);
   const areaLabel = withAreaSuffix(primary, district, city) ?? withAreaSuffix(district, undefined, city) ?? city;
   if (areaLabel) {
     return areaLabel;
@@ -295,9 +312,17 @@ async function resolveOSMLocationLabel(lat: number, lng: number, fallbackLabel: 
   return normalizeDisplayName(data.display_name ?? "") || fallbackLabel;
 }
 
-export async function resolveLocationLabel({ lat, lng, provider, amapApiKey, amapSecurityKey, fallbackLabel }: ResolveLocationLabelParams): Promise<string> {
+export async function resolveLocationLabel({
+  lat,
+  lng,
+  provider,
+  amapApiKey,
+  amapSecurityKey,
+  fallbackLabel,
+}: ResolveLocationLabelParams): Promise<string> {
   if (provider === InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider.AMAP && amapApiKey) {
-    return resolveAmapLocationLabel(lat, lng, amapApiKey, fallbackLabel, amapSecurityKey);
+    const [gcjLng, gcjLat] = wgs84ToGcj02(lng, lat);
+    return resolveAmapLocationLabel(gcjLat, gcjLng, amapApiKey, fallbackLabel, amapSecurityKey);
   }
 
   return resolveOSMLocationLabel(lat, lng, fallbackLabel);
@@ -314,9 +339,11 @@ export async function resolveLocationCandidates({
     return [];
   }
 
+  const [gcjLng, gcjLat] = wgs84ToGcj02(lng, lat);
+
   const [nearbyData, areaData] = await Promise.all([
-    fetchAmapNearbyPOIs(lat, lng, amapApiKey, 1000, amapSecurityKey),
-    fetchAmapReverseGeocoding(lat, lng, amapApiKey, 1000, amapSecurityKey),
+    fetchAmapNearbyPOIs(gcjLat, gcjLng, amapApiKey, 1000, amapSecurityKey),
+    fetchAmapReverseGeocoding(gcjLat, gcjLng, amapApiKey, 1000, amapSecurityKey),
   ]);
 
   if (!nearbyData?.pois?.length) {

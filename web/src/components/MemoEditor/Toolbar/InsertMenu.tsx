@@ -4,13 +4,14 @@ import { LatLng } from "leaflet";
 import { uniqBy } from "lodash-es";
 import { FileIcon, ImageIcon, LinkIcon, LoaderIcon, MapPinIcon, Maximize2Icon, MoreHorizontal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "react-hot-toast";
 import { useDebounce } from "react-use";
 import { useLocationCandidates, useReverseGeocoding } from "@/components/map";
 import { resolveLocationLabel } from "@/components/map/geocoding";
 import { getImageLocationCandidateDistanceMeters, getMapSettingWithDefaults } from "@/components/map/map-setting";
-import { useInstance } from "@/contexts/InstanceContext";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useInstance } from "@/contexts/InstanceContext";
 import { LocationSchema, type MemoRelation } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import { LinkMemoDialog, LocationDialog } from "../components";
@@ -26,9 +27,11 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
   const imageCandidateDistanceMeters = getImageLocationCandidateDistanceMeters();
   const { state, actions, dispatch } = useEditorContext();
   const { location: initialLocation, onLocationChange, onToggleFocusMode, isUploading: isUploadingProp } = props;
+  const isCreatingMemo = !props.memoName;
 
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
+  const [hasUserOpenedLocationDialog, setHasUserOpenedLocationDialog] = useState(false);
 
   const { fileInputRef, selectingFlag, handleFileInputChange, handleUploadClick } = useFileUpload((newFiles: LocalFile[]) => {
     newFiles.forEach((file) => dispatch(actions.addLocalFile(file)));
@@ -63,6 +66,40 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
   );
   const [imageLocationPoints, setImageLocationPoints] = useState<Array<{ lat: number; lng: number; label: string }>>([]);
   const [activeSeed, setActiveSeed] = useState<{ label: string; kind: "image" | "current"; imageIndex?: number } | undefined>(undefined);
+
+  const handleGeolocationError = useCallback(
+    (error?: GeolocationPositionError) => {
+      console.error("Geolocation error:", error);
+      const message =
+        error?.code === error?.PERMISSION_DENIED
+          ? t("editor.location-permission-denied")
+          : error?.code === error?.POSITION_UNAVAILABLE
+            ? t("editor.location-position-unavailable")
+            : t("editor.location-unavailable");
+      toast.error(message);
+    },
+    [t],
+  );
+
+  const requestCurrentPosition = useCallback(async (): Promise<GeolocationPosition | undefined> => {
+    if (!navigator.geolocation) {
+      toast.error(t("editor.location-unavailable"));
+      return undefined;
+    }
+
+    return new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0,
+      });
+    })
+      .then((position) => position)
+      .catch((error: GeolocationPositionError) => {
+        handleGeolocationError(error);
+        return undefined;
+      });
+  }, [handleGeolocationError, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -147,6 +184,16 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
   }, [imageCandidateDistanceMeters, mapSetting.amapApiKey, mapSetting.amapSecurityKey, mapSetting.provider, state.localFiles]);
 
   useEffect(() => {
+    if (!isCreatingMemo) {
+      return;
+    }
+    if (hasUserOpenedLocationDialog) {
+      return;
+    }
+    if (state.localFiles.length === 0) {
+      return;
+    }
+
     const firstImagePoint = imageLocationPoints[0];
     if (!firstImagePoint) {
       return;
@@ -162,7 +209,15 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
         placeholder: firstImagePoint.label,
       }),
     );
-  }, [imageLocationPoints, initialLocation, onLocationChange, state.metadata.location]);
+  }, [
+    hasUserOpenedLocationDialog,
+    imageLocationPoints,
+    initialLocation,
+    isCreatingMemo,
+    onLocationChange,
+    state.localFiles.length,
+    state.metadata.location,
+  ]);
 
   const mergedCandidates = useMemo(() => {
     const seen = new Set<string>();
@@ -192,7 +247,10 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
   }, [activeSeed, imageLocationPoints, location.state.placeholder, locationCandidates]);
 
   useEffect(() => {
-    if (locationDialogOpen && imageLocationPoints.length > 0 && !activeSeed) {
+    // Only auto-seed from image EXIF when the dialog opens for the first time
+    // (locationInitialized === false). Once the user has manually set a location,
+    // locationInitialized becomes true and we never override it again.
+    if (locationDialogOpen && imageLocationPoints.length > 0 && !activeSeed && !location.locationInitialized) {
       const firstPoint = imageLocationPoints[0];
       location.handlePositionChange(new LatLng(firstPoint.lat, firstPoint.lng));
       location.setPlaceholder(firstPoint.label);
@@ -220,6 +278,8 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
   }, []);
 
   const handleLocationClick = useCallback(() => {
+    setHasUserOpenedLocationDialog(true);
+
     if (initialLocation && !location.state.position) {
       location.restoreInitial();
     }
@@ -227,18 +287,14 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
     setActiveSeed(undefined);
     setLocationDialogOpen(true);
     if (!initialLocation && !location.locationInitialized) {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            location.handlePositionChange(new LatLng(position.coords.latitude, position.coords.longitude));
-          },
-          (error) => {
-            console.error("Geolocation error:", error);
-          },
-        );
-      }
+      void requestCurrentPosition().then((position) => {
+        if (!position) {
+          return;
+        }
+        location.handlePositionChange(new LatLng(position.coords.latitude, position.coords.longitude));
+      });
     }
-  }, [initialLocation, location]);
+  }, [initialLocation, location, requestCurrentPosition]);
 
   const handleLocationConfirm = useCallback(() => {
     const newLocation = location.getLocation();
@@ -277,39 +333,34 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
   );
 
   const handleUseCurrentLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      return;
-    }
+    void requestCurrentPosition().then(async (position) => {
+      if (!position) {
+        return;
+      }
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        const fallbackLabel = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-        let label = fallbackLabel;
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      const fallbackLabel = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      let label = fallbackLabel;
 
-        try {
-          label = await resolveLocationLabel({
-            lat,
-            lng,
-            provider: mapSetting.provider,
-            amapApiKey: mapSetting.amapApiKey,
-            amapSecurityKey: mapSetting.amapSecurityKey,
-            fallbackLabel,
-          });
-        } catch {
-          label = fallbackLabel;
-        }
+      try {
+        label = await resolveLocationLabel({
+          lat,
+          lng,
+          provider: mapSetting.provider,
+          amapApiKey: mapSetting.amapApiKey,
+          amapSecurityKey: mapSetting.amapSecurityKey,
+          fallbackLabel,
+        });
+      } catch {
+        label = fallbackLabel;
+      }
 
-        location.handlePositionChange(new LatLng(lat, lng));
-        location.setPlaceholder(label);
-        setActiveSeed({ label, kind: "current" });
-      },
-      (error) => {
-        console.error("Geolocation error:", error);
-      },
-    );
-  }, [location, mapSetting.amapApiKey, mapSetting.amapSecurityKey, mapSetting.provider]);
+      location.handlePositionChange(new LatLng(lat, lng));
+      location.setPlaceholder(label);
+      setActiveSeed({ label, kind: "current" });
+    });
+  }, [location, mapSetting.amapApiKey, mapSetting.amapSecurityKey, mapSetting.provider, requestCurrentPosition]);
 
   const handleToggleFocusMode = useCallback(() => {
     onToggleFocusMode?.();

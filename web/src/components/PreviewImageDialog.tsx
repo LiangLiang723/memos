@@ -1,13 +1,13 @@
-import { LatLng } from "leaflet";
 import * as exifr from "exifr";
+import { LatLng } from "leaflet";
 import { InfoIcon, X } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { LocationPicker } from "@/components/map";
 import { resolveLocationLabel } from "@/components/map/geocoding";
 import { getMapSettingWithDefaults } from "@/components/map/map-setting";
-import { useInstance } from "@/contexts/InstanceContext";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useInstance } from "@/contexts/InstanceContext";
 
 interface Props {
   open: boolean;
@@ -160,7 +160,8 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
     ]
       .filter(Boolean)
       .join(" · ");
-    const locationText = locationLabel || (locationName ? (destinationDistance ? `${locationName}附近${destinationDistance}` : locationName) : gpsText);
+    const locationText =
+      locationLabel || (locationName ? (destinationDistance ? `${locationName}附近${destinationDistance}` : locationName) : gpsText);
 
     const shotTime =
       formatDateTime(exifDetails.DateTimeOriginal) ||
@@ -479,11 +480,13 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
                       </Button>
                     )}
                   </p>
-                  {readableDetails.location !== "暂无" && readableDetails.latitude !== undefined && readableDetails.longitude !== undefined && (
-                    <div className="overflow-hidden rounded-lg border border-border/40">
-                      <LocationPicker latlng={new LatLng(readableDetails.latitude, readableDetails.longitude)} readonly={true} />
-                    </div>
-                  )}
+                  {readableDetails.location !== "暂无" &&
+                    readableDetails.latitude !== undefined &&
+                    readableDetails.longitude !== undefined && (
+                      <div className="overflow-hidden rounded-lg border border-border/40">
+                        <LocationPicker latlng={new LatLng(readableDetails.latitude, readableDetails.longitude)} readonly={true} />
+                      </div>
+                    )}
                 </div>
               )}
             </div>

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useInstance } from "@/contexts/InstanceContext";
-import { getMapSettingWithDefaults, isAmapProvider } from "./map-setting";
 import { DEFAULT_AMAP_PLACEHOLDER, resolveLocationLabel } from "./geocoding";
+import { getMapSettingWithDefaults, isAmapProvider } from "./map-setting";
 
 export const useReverseGeocoding = (lat: number | undefined, lng: number | undefined) => {
   const { memoRelatedSetting } = useInstance();
