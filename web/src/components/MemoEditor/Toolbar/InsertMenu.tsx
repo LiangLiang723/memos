@@ -3,7 +3,7 @@ import * as exifr from "exifr";
 import { LatLng } from "leaflet";
 import { uniqBy } from "lodash-es";
 import { FileIcon, ImageIcon, LinkIcon, LoaderIcon, MapPinIcon, Maximize2Icon, MoreHorizontal } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useDebounce } from "react-use";
 import { useLocationCandidates, useReverseGeocoding } from "@/components/map";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useInstance } from "@/contexts/InstanceContext";
 import { LocationSchema, type MemoRelation } from "@/types/proto/api/v1/memo_service_pb";
+import { getAttachmentUrl } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
 import { LinkMemoDialog, LocationDialog } from "../components";
 import { useFileUpload, useLinkMemo, useLocation } from "../hooks";
@@ -32,6 +33,7 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
   const [hasUserOpenedLocationDialog, setHasUserOpenedLocationDialog] = useState(false);
+  const hadLocationRef = useRef(Boolean(state.metadata.location));
 
   const { fileInputRef, selectingFlag, handleFileInputChange, handleUploadClick } = useFileUpload((newFiles: LocalFile[]) => {
     newFiles.forEach((file) => dispatch(actions.addLocalFile(file)));
@@ -66,6 +68,13 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
   );
   const [imageLocationPoints, setImageLocationPoints] = useState<Array<{ lat: number; lng: number; label: string }>>([]);
   const [activeSeed, setActiveSeed] = useState<{ label: string; kind: "image" | "current"; imageIndex?: number } | undefined>(undefined);
+
+  useEffect(() => {
+    if (state.metadata.location) {
+      hadLocationRef.current = true;
+      return;
+    }
+  }, [state.metadata.location]);
 
   const handleGeolocationError = useCallback(
     (error?: GeolocationPositionError) => {
@@ -122,7 +131,12 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
     };
 
     const loadImageLocationPoints = async () => {
-      if (state.localFiles.length === 0) {
+      const localImageFiles = state.localFiles.map((item) => item.file).filter((file) => file.type.startsWith("image/"));
+      const attachedImageUrls = state.metadata.attachments
+        .filter((attachment) => attachment.type.startsWith("image/"))
+        .map((attachment) => getAttachmentUrl(attachment));
+
+      if (localImageFiles.length === 0 && attachedImageUrls.length === 0) {
         setImageLocationPoints([]);
         return;
       }
@@ -130,14 +144,70 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
       const points: Array<{ lat: number; lng: number; label: string }> = [];
       const minDistanceMeters = imageCandidateDistanceMeters;
 
-      for (const localFile of state.localFiles) {
-        const file = localFile.file;
-        if (!file.type.startsWith("image/")) {
-          continue;
-        }
-
+      const parseExif = async (source: File | string): Promise<Record<string, unknown> | null> => {
         try {
-          const exifData = (await exifr.parse(file, { gps: true })) as Record<string, unknown> | null;
+          if (typeof source === "string") {
+            const response = await fetch(source, { credentials: "include" });
+            if (!response.ok) {
+              return null;
+            }
+            const blob = await response.blob();
+            return (await exifr.parse(blob, { gps: true })) as Record<string, unknown> | null;
+          }
+          return (await exifr.parse(source, { gps: true })) as Record<string, unknown> | null;
+        } catch {
+          return null;
+        }
+      };
+
+      for (const imageFile of localImageFiles) {
+        try {
+          const exifData = await parseExif(imageFile);
+          if (!exifData) {
+            continue;
+          }
+
+          const lat = toNumber(exifData?.latitude ?? exifData?.GPSLatitude);
+          const lng = toNumber(exifData?.longitude ?? exifData?.GPSLongitude);
+          const valid = lat !== undefined && lng !== undefined && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+
+          if (!valid) {
+            continue;
+          }
+
+          const shouldAdd = points.every((point) => distanceMeters(point, { lat, lng }) > minDistanceMeters);
+          if (!shouldAdd) {
+            continue;
+          }
+
+          const fallbackLabel = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+          let label = fallbackLabel;
+          try {
+            label = await resolveLocationLabel({
+              lat,
+              lng,
+              provider: mapSetting.provider,
+              amapApiKey: mapSetting.amapApiKey,
+              amapSecurityKey: mapSetting.amapSecurityKey,
+              fallbackLabel,
+            });
+          } catch {
+            label = fallbackLabel;
+          }
+
+          points.push({ lat, lng, label });
+        } catch {
+          // Ignore files without readable EXIF data.
+        }
+      }
+
+      for (const imageUrl of attachedImageUrls) {
+        try {
+          const exifData = await parseExif(imageUrl);
+          if (!exifData) {
+            continue;
+          }
+
           const lat = toNumber(exifData?.latitude ?? exifData?.GPSLatitude);
           const lng = toNumber(exifData?.longitude ?? exifData?.GPSLongitude);
           const valid = lat !== undefined && lng !== undefined && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
@@ -181,7 +251,7 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
     return () => {
       cancelled = true;
     };
-  }, [imageCandidateDistanceMeters, mapSetting.amapApiKey, mapSetting.amapSecurityKey, mapSetting.provider, state.localFiles]);
+  }, [imageCandidateDistanceMeters, mapSetting.amapApiKey, mapSetting.amapSecurityKey, mapSetting.provider, state.localFiles, state.metadata.attachments]);
 
   useEffect(() => {
     if (!isCreatingMemo) {
@@ -199,6 +269,10 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
       return;
     }
     if (initialLocation || state.metadata.location) {
+      return;
+    }
+    // If location existed before and is now cleared, treat it as explicit user removal.
+    if (hadLocationRef.current && !state.metadata.location) {
       return;
     }
 
