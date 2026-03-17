@@ -1,5 +1,5 @@
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
-import { getAttachmentThumbnailUrl, getAttachmentType, getAttachmentUrl } from "@/utils/attachment";
+import { getAttachmentThumbnailUrl, getAttachmentType, getAttachmentUrl, isAnimatedImageMimeType } from "@/utils/attachment";
 
 export type FileCategory = "image" | "video" | "document";
 
@@ -30,13 +30,14 @@ function categorizeFile(mimeType: string): FileCategory {
 export function attachmentToItem(attachment: Attachment): AttachmentItem {
   const attachmentType = getAttachmentType(attachment);
   const sourceUrl = getAttachmentUrl(attachment);
+  const shouldUseSourceForPreview = attachmentType === "image/*" && isAnimatedImageMimeType(attachment.type);
 
   return {
     id: attachment.name,
     filename: attachment.filename,
     category: categorizeFile(attachment.type),
     mimeType: attachment.type,
-    thumbnailUrl: attachmentType === "image/*" ? getAttachmentThumbnailUrl(attachment) : sourceUrl,
+    thumbnailUrl: attachmentType === "image/*" && !shouldUseSourceForPreview ? getAttachmentThumbnailUrl(attachment) : sourceUrl,
     sourceUrl,
     size: Number(attachment.size),
     isLocal: false,
