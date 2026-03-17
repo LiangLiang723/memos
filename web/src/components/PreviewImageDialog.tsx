@@ -1,7 +1,7 @@
 import * as exifr from "exifr";
 import { LatLng } from "leaflet";
 import { InfoIcon, X } from "lucide-react";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { LocationPicker } from "@/components/map";
 import { resolveLocationLabel } from "@/components/map/geocoding";
 import { getMapSettingWithDefaults } from "@/components/map/map-setting";
@@ -9,10 +9,18 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useInstance } from "@/contexts/InstanceContext";
 
+export interface PreviewMediaItem {
+  url: string;
+  type: "image" | "video";
+  mimeType?: string;
+  thumbnailUrl?: string;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  imgUrls: string[];
+  imgUrls?: string[];
+  mediaItems?: PreviewMediaItem[];
   initialIndex?: number;
 }
 
@@ -26,7 +34,13 @@ interface ReadableDetails {
   longitude?: number;
 }
 
-function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: Props) {
+interface LivePhotoDetection {
+  loading: boolean;
+  canPlay: boolean;
+  motionVideoUrl?: string;
+}
+
+function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, initialIndex = 0 }: Props) {
   const { memoRelatedSetting } = useInstance();
   const mapSetting = getMapSettingWithDefaults(memoRelatedSetting.mapSetting);
   const MAX_SCALE = 5;
@@ -38,6 +52,8 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
   const [detailsError, setDetailsError] = useState<string | null>(null);
   const [readableDetails, setReadableDetails] = useState<ReadableDetails | null>(null);
   const [locationCopied, setLocationCopied] = useState(false);
+  const [imageDisplayMode, setImageDisplayMode] = useState<"static" | "motion-video">("static");
+  const [livePhoto, setLivePhoto] = useState<LivePhotoDetection>({ loading: false, canPlay: false });
   const isPanningRef = useRef(false);
   const lastPanRef = useRef({ x: 0, y: 0 });
   const initialPinchDistanceRef = useRef<number | null>(null);
@@ -45,6 +61,91 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
   const imgRef = useRef<HTMLImageElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const livePhotoCacheRef = useRef<Map<string, { canPlay: boolean; motionVideoUrl?: string }>>(new Map());
+  const activeObjectUrlsRef = useRef<Set<string>>(new Set());
+
+  const resolvedMediaItems = useMemo<PreviewMediaItem[]>(() => {
+    if (mediaItems && mediaItems.length > 0) {
+      return mediaItems;
+    }
+    return imgUrls.map((url) => ({ url, type: "image" }));
+  }, [mediaItems, imgUrls]);
+
+  const safeIndex = Math.max(0, Math.min(currentIndex, Math.max(0, resolvedMediaItems.length - 1)));
+  const currentMedia = resolvedMediaItems[safeIndex];
+  const isCurrentVideo = currentMedia?.type === "video";
+
+  const isLikelyLivePhotoMimeType = (mimeType: string | undefined, url: string): boolean => {
+    const normalized = (mimeType || "").toLowerCase();
+    if (
+      normalized.includes("jpeg") ||
+      normalized.includes("jpg") ||
+      normalized.includes("heic") ||
+      normalized.includes("heif")
+    ) {
+      return true;
+    }
+
+    const pathname = url.split("?")[0]?.toLowerCase() || "";
+    return pathname.endsWith(".jpg") || pathname.endsWith(".jpeg") || pathname.endsWith(".heic") || pathname.endsWith(".heif");
+  };
+
+  const hasMotionPhotoMetadata = (metadata: Record<string, unknown>): boolean => {
+    const keys = [
+      "MotionPhoto",
+      "MicroVideo",
+      "MicroVideoOffset",
+      "MotionPhotoVersion",
+      "LivePhotoVideoIndex",
+      "StillImageTime",
+      "ImageCaptureType",
+    ];
+
+    return keys.some((key) => {
+      const value = metadata[key];
+      if (value === undefined || value === null) return false;
+      if (typeof value === "number") return value > 0;
+      if (typeof value === "string") {
+        const lowered = value.toLowerCase();
+        return lowered === "1" || lowered === "true" || lowered.includes("motion") || lowered.includes("live");
+      }
+      return Boolean(value);
+    });
+  };
+
+  const readUint32BE = (data: Uint8Array, offset: number): number => {
+    if (offset + 3 >= data.length) return 0;
+    return (data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) | data[offset + 3];
+  };
+
+  const extractMotionVideoBlob = (arrayBuffer: ArrayBuffer): Blob | null => {
+    const data = new Uint8Array(arrayBuffer);
+    let ftypIndex = -1;
+    for (let i = 0; i <= data.length - 4; i++) {
+      if (data[i] === 0x66 && data[i + 1] === 0x74 && data[i + 2] === 0x79 && data[i + 3] === 0x70) {
+        ftypIndex = i;
+        break;
+      }
+    }
+
+    if (ftypIndex < 0) return null;
+
+    let start = Math.max(0, ftypIndex - 4);
+    const size = readUint32BE(data, start);
+    if (size < 8 || size > data.length - start) {
+      start = ftypIndex;
+    }
+
+    if (start >= data.length) return null;
+
+    return new Blob([data.slice(start)], { type: "video/mp4" });
+  };
+
+  const revokeBlobUrl = (url?: string) => {
+    if (url && url.startsWith("blob:")) {
+      URL.revokeObjectURL(url);
+    }
+  };
 
   const formatBytes = (bytes: number): string => {
     if (!Number.isFinite(bytes) || bytes < 0) return "-";
@@ -198,7 +299,9 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
   };
 
   const loadImageDetails = async () => {
-    const imageUrl = imgUrls[Math.max(0, Math.min(currentIndex, imgUrls.length - 1))];
+    if (!currentMedia || currentMedia.type !== "image") return;
+
+    const imageUrl = currentMedia.url;
     const imageEl = imgRef.current;
 
     setDetailsLoading(true);
@@ -261,13 +364,16 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
     };
   };
 
-  // Update current index when initialIndex prop changes
+  const currentImageSrc = useMemo(() => {
+    if (!currentMedia || currentMedia.type !== "image") return "";
+    return currentMedia.thumbnailUrl || currentMedia.url;
+  }, [currentMedia]);
+
   useEffect(() => {
     setCurrentIndex(initialIndex);
   }, [initialIndex]);
 
   useEffect(() => {
-    // reset transform when image changes or dialog opens
     setScale(1);
     setTranslate({ x: 0, y: 0 });
     initialPinchDistanceRef.current = null;
@@ -277,15 +383,95 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
     setReadableDetails(null);
     setDetailsError(null);
     setLocationCopied(false);
+    setImageDisplayMode("static");
   }, [currentIndex, open]);
 
   useEffect(() => {
-    if (!detailsOpen || !open) return;
-    void loadImageDetails();
-  }, [detailsOpen, open, currentIndex, mapSetting.provider, mapSetting.amapApiKey]);
+    const detectLivePhoto = async () => {
+      if (!open || !currentMedia || currentMedia.type !== "image") {
+        setLivePhoto({ loading: false, canPlay: false });
+        return;
+      }
+
+      if (!isLikelyLivePhotoMimeType(currentMedia.mimeType, currentMedia.url)) {
+        setLivePhoto({ loading: false, canPlay: false });
+        return;
+      }
+
+      const cached = livePhotoCacheRef.current.get(currentMedia.url);
+      if (cached) {
+        setLivePhoto({ loading: false, ...cached });
+        return;
+      }
+
+      setLivePhoto({ loading: true, canPlay: false });
+
+      try {
+        const response = await fetch(currentMedia.url);
+        if (!response.ok) {
+          setLivePhoto({ loading: false, canPlay: false });
+          return;
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const metadata = ((await exifr.parse(arrayBuffer, {
+          tiff: true,
+          xmp: true,
+          icc: false,
+          iptc: false,
+          jfif: true,
+          ihdr: true,
+        })) || {}) as Record<string, unknown>;
+
+        const metadataDetected = hasMotionPhotoMetadata(metadata);
+        const motionBlob = extractMotionVideoBlob(arrayBuffer);
+        const motionVideoUrl = motionBlob ? URL.createObjectURL(motionBlob) : undefined;
+
+        if (motionVideoUrl) {
+          activeObjectUrlsRef.current.add(motionVideoUrl);
+        }
+
+        const next = {
+          canPlay: Boolean(motionVideoUrl),
+          motionVideoUrl,
+        };
+
+        if (!next.canPlay && !metadataDetected) {
+          livePhotoCacheRef.current.set(currentMedia.url, next);
+          setLivePhoto({ loading: false, ...next });
+          return;
+        }
+
+        livePhotoCacheRef.current.set(currentMedia.url, next);
+        setLivePhoto({ loading: false, ...next });
+      } catch {
+        setLivePhoto({ loading: false, canPlay: false });
+      }
+    };
+
+    void detectLivePhoto();
+  }, [open, currentMedia]);
 
   useEffect(() => {
-    if (!open) return;
+    return () => {
+      for (const item of activeObjectUrlsRef.current) {
+        revokeBlobUrl(item);
+      }
+      activeObjectUrlsRef.current.clear();
+      for (const item of livePhotoCacheRef.current.values()) {
+        revokeBlobUrl(item.motionVideoUrl);
+      }
+      livePhotoCacheRef.current.clear();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!detailsOpen || !open || isCurrentVideo) return;
+    void loadImageDetails();
+  }, [detailsOpen, open, currentIndex, isCurrentVideo, mapSetting.provider, mapSetting.amapApiKey]);
+
+  useEffect(() => {
+    if (!open || isCurrentVideo) return;
 
     const handleResize = () => {
       setTranslate((prev) => clampTranslate(scale, prev));
@@ -293,11 +479,10 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [open, scale]);
+  }, [open, scale, isCurrentVideo]);
 
-  // Mouse move/up handlers for panning
   const onMouseMove = (e: MouseEvent) => {
-    if (!isPanningRef.current) return;
+    if (!isPanningRef.current || isCurrentVideo) return;
     if (scale <= 1) return;
     setTranslate(clampTranslate(scale, { x: e.clientX - lastPanRef.current.x, y: e.clientY - lastPanRef.current.y }));
   };
@@ -308,7 +493,6 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
     document.removeEventListener("mouseup", onMouseUp);
   };
 
-  // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!open) return;
@@ -318,7 +502,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
           onOpenChange(false);
           break;
         case "ArrowRight":
-          setCurrentIndex((prev) => Math.min(prev + 1, imgUrls.length - 1));
+          setCurrentIndex((prev) => Math.min(prev + 1, resolvedMediaItems.length - 1));
           break;
         case "ArrowLeft":
           setCurrentIndex((prev) => Math.max(prev - 1, 0));
@@ -330,7 +514,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onOpenChange]);
+  }, [open, onOpenChange, resolvedMediaItems.length]);
 
   const handleClose = () => {
     onOpenChange(false);
@@ -353,11 +537,13 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
     }
   };
 
-  // Return early if no images provided
-  if (!imgUrls.length) return null;
+  const handlePlayAnimated = () => {
+    if (!currentMedia || currentMedia.type !== "image") return;
+    if (!livePhoto.canPlay) return;
+    setImageDisplayMode("motion-video");
+  };
 
-  // Ensure currentIndex is within bounds
-  const safeIndex = Math.max(0, Math.min(currentIndex, imgUrls.length - 1));
+  if (!resolvedMediaItems.length) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -365,7 +551,6 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
         className="!w-[100vw] !h-[100dvh] !max-w-[100vw] !max-h-[100dvh] p-0 border-0 shadow-none bg-transparent [&>button]:hidden"
         aria-describedby="image-preview-description"
       >
-        {/* Close button */}
         <div className="fixed top-4 right-4 z-50">
           <Button
             onClick={handleClose}
@@ -378,24 +563,38 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
           </Button>
         </div>
 
-        {/* Details button */}
-        <div className="fixed top-4 left-4 z-50">
-          <Button
-            onClick={() => setDetailsOpen((prev) => !prev)}
-            variant="secondary"
-            size="sm"
-            className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
-            aria-label="切换照片详情"
-          >
-            <InfoIcon className="h-4 w-4 mr-1" />
-            照片详情
-          </Button>
-        </div>
+        {!isCurrentVideo && (
+          <div className="fixed top-4 left-4 z-50">
+            <Button
+              onClick={() => setDetailsOpen((prev) => !prev)}
+              variant="secondary"
+              size="sm"
+              className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
+              aria-label="切换照片详情"
+            >
+              <InfoIcon className="h-4 w-4 mr-1" />
+              照片详情
+            </Button>
+          </div>
+        )}
 
-        {/* Bottom controls */}
+        {!isCurrentVideo && livePhoto.canPlay && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+            <Button
+              onClick={handlePlayAnimated}
+              variant="secondary"
+              size="sm"
+              className="h-11 px-5 text-base rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
+              aria-label="播放动图一次"
+            >
+              播放动图
+            </Button>
+          </div>
+        )}
+
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
           <div className="flex items-center gap-2">
-            {imgUrls.length > 1 && (
+            {resolvedMediaItems.length > 1 && (
               <>
                 <Button
                   variant="secondary"
@@ -412,32 +611,34 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
                   size="sm"
                   className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
                   aria-label="下一张"
-                  onClick={() => setCurrentIndex((prev) => Math.min(prev + 1, imgUrls.length - 1))}
-                  disabled={safeIndex === imgUrls.length - 1}
+                  onClick={() => setCurrentIndex((prev) => Math.min(prev + 1, resolvedMediaItems.length - 1))}
+                  disabled={safeIndex === resolvedMediaItems.length - 1}
                 >
                   下一张
                 </Button>
               </>
             )}
 
-            <Button
-              variant="secondary"
-              size="sm"
-              className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
-              aria-label="恢复原始比例"
-              onClick={() => {
-                setScale(1);
-                setTranslate({ x: 0, y: 0 });
-                initialPinchDistanceRef.current = null;
-                initialScaleRef.current = 1;
-              }}
-            >
-              恢复原始比例
-            </Button>
+            {!isCurrentVideo && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
+                aria-label="恢复原始比例"
+                onClick={() => {
+                  setScale(1);
+                  setTranslate({ x: 0, y: 0 });
+                  initialPinchDistanceRef.current = null;
+                  initialScaleRef.current = 1;
+                }}
+              >
+                恢复原始比例
+              </Button>
+            )}
           </div>
         </div>
 
-        {detailsOpen && (
+        {detailsOpen && !isCurrentVideo && (
           <div className="fixed top-16 left-4 z-50 w-[min(34rem,calc(100vw-2rem))] max-h-[calc(100dvh-9rem)] overflow-auto rounded-lg border border-border/40 bg-popover/90 text-popover-foreground backdrop-blur-md shadow-lg">
             <div className="sticky top-0 z-10 flex items-center justify-between gap-2 px-3 py-2 border-b border-border/40 bg-popover/95">
               <span className="text-sm font-medium">照片详细数据</span>
@@ -493,7 +694,6 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
           </div>
         )}
 
-        {/* Image container */}
         <div
           ref={containerRef}
           className="w-full h-full flex items-center justify-center px-4 sm:px-8 overflow-hidden touch-none"
@@ -512,6 +712,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
               maxHeight: "100%",
             }}
             onWheel={(e) => {
+              if (isCurrentVideo) return;
               e.preventDefault();
               const delta = -e.deltaY * 0.0015;
               const newScale = Math.max(1, Math.min(MAX_SCALE, scale * (1 + delta)));
@@ -519,13 +720,14 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
               setTranslate((prev) => clampTranslate(newScale, prev));
             }}
             onMouseDown={(e) => {
-              if (e.button !== 0) return;
+              if (isCurrentVideo || e.button !== 0) return;
               isPanningRef.current = true;
               lastPanRef.current = { x: e.clientX - translate.x, y: e.clientY - translate.y };
               (e.target as Element).ownerDocument?.addEventListener("mousemove", onMouseMove);
               (e.target as Element).ownerDocument?.addEventListener("mouseup", onMouseUp);
             }}
             onTouchStart={(e) => {
+              if (isCurrentVideo) return;
               if (e.touches.length === 2) {
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
@@ -537,6 +739,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
               }
             }}
             onTouchMove={(e) => {
+              if (isCurrentVideo) return;
               if (e.touches.length === 2 && initialPinchDistanceRef.current) {
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
@@ -558,6 +761,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
               }
             }}
             onTouchEnd={(e) => {
+              if (isCurrentVideo) return;
               if (e.touches.length < 2) {
                 initialPinchDistanceRef.current = null;
                 initialScaleRef.current = scale;
@@ -570,31 +774,53 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
           >
             <div
               className="w-full h-full flex items-center justify-center"
-              style={{
-                transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
-                transition: "transform 0s",
-                transformOrigin: "center center",
-              }}
+              style={
+                isCurrentVideo
+                  ? undefined
+                  : {
+                      transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+                      transition: "transform 0s",
+                      transformOrigin: "center center",
+                    }
+              }
             >
-              <img
-                ref={imgRef}
-                src={imgUrls[safeIndex]}
-                alt={`Preview image ${safeIndex + 1} of ${imgUrls.length}`}
-                className="block w-full h-full object-contain select-none"
-                draggable={false}
-                loading="eager"
-                decoding="async"
-                onLoad={() => {
-                  setTranslate((prev) => clampTranslate(scale, prev));
-                }}
-              />
+              {isCurrentVideo ? (
+                <video src={currentMedia?.url} controls className="block w-full h-full object-contain" preload="metadata" playsInline />
+              ) : imageDisplayMode === "motion-video" && livePhoto.motionVideoUrl ? (
+                <video
+                  src={livePhoto.motionVideoUrl}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="block w-full h-full object-contain"
+                  onEnded={() => setImageDisplayMode("static")}
+                />
+              ) : (
+                <img
+                  ref={imgRef}
+                  src={currentImageSrc}
+                  alt={`Preview image ${safeIndex + 1} of ${resolvedMediaItems.length}`}
+                  className="block w-full h-full object-contain select-none"
+                  draggable={false}
+                  loading="eager"
+                  decoding="async"
+                  onLoad={() => {
+                    setTranslate((prev) => clampTranslate(scale, prev));
+                  }}
+                  onError={(event) => {
+                    const target = event.target as HTMLImageElement;
+                    if (target.src.includes("?thumbnail=true")) {
+                      target.src = currentMedia?.url || target.src;
+                    }
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>
 
-        {/* Screen reader description */}
         <div id="image-preview-description" className="sr-only">
-          图片预览对话框。按 Escape 关闭，或点击图片外区域关闭。
+          媒体预览对话框。按 Escape 关闭，或点击媒体外区域关闭。
         </div>
       </DialogContent>
     </Dialog>

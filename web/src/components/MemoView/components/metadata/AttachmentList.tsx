@@ -1,7 +1,7 @@
 import { FileAudioIcon, FileIcon, PaperclipIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
-import { getAttachmentType, getAttachmentUrl } from "@/utils/attachment";
+import { getAttachmentThumbnailUrl, getAttachmentType, getAttachmentUrl } from "@/utils/attachment";
 import { formatFileSize, getFileTypeLabel } from "@/utils/format";
 import { useTranslate } from "@/utils/i18n";
 import PreviewImageDialog from "../../../PreviewImageDialog";
@@ -80,21 +80,17 @@ const AudioItem = ({ attachment }: { attachment: Attachment }) => {
 
 interface VisualItemProps {
   attachment: Attachment;
-  onImageClick: (url: string) => void;
+  onVisualClick: (attachment: Attachment) => void;
 }
 
-const VisualItem = ({ attachment, onImageClick }: VisualItemProps) => {
-  const isImage = isImageAttachment(attachment);
-
+const VisualItem = ({ attachment, onVisualClick }: VisualItemProps) => {
   const handleClick = () => {
-    if (isImage) {
-      onImageClick(getAttachmentUrl(attachment));
-    }
+    onVisualClick(attachment);
   };
 
   return (
     <div
-      className={`aspect-square rounded-lg overflow-hidden bg-muted/40 border border-border hover:border-accent/50 transition-all ${isImage ? "cursor-pointer group" : ""}`}
+      className="aspect-square rounded-lg overflow-hidden bg-muted/40 border border-border hover:border-accent/50 transition-all cursor-pointer"
       onClick={handleClick}
     >
       <AttachmentCard attachment={attachment} className="rounded-none" />
@@ -102,10 +98,10 @@ const VisualItem = ({ attachment, onImageClick }: VisualItemProps) => {
   );
 };
 
-const VisualGrid = ({ attachments, onImageClick }: { attachments: Attachment[]; onImageClick: (url: string) => void }) => (
+const VisualGrid = ({ attachments, onVisualClick }: { attachments: Attachment[]; onVisualClick: (attachment: Attachment) => void }) => (
   <div className="grid grid-cols-3 lg:grid-cols-5 gap-1.5">
     {attachments.map((attachment) => (
-      <VisualItem key={attachment.name} attachment={attachment} onImageClick={onImageClick} />
+      <VisualItem key={attachment.name} attachment={attachment} onVisualClick={onVisualClick} />
     ))}
   </div>
 );
@@ -132,17 +128,27 @@ const Divider = () => <div className="border-t mt-1 border-border opacity-60" />
 
 const AttachmentList = ({ attachments }: AttachmentListProps) => {
   const t = useTranslate();
-  const [previewImage, setPreviewImage] = useState<{ open: boolean; urls: string[]; index: number; mimeType?: string }>({
+  const [previewImage, setPreviewImage] = useState<{
+    open: boolean;
+    mediaItems: { url: string; type: "image" | "video"; mimeType?: string; thumbnailUrl?: string }[];
+    index: number;
+  }>({
     open: false,
-    urls: [],
+    mediaItems: [],
     index: 0,
-    mimeType: undefined,
   });
 
   const { visual, audio, docs } = useMemo(() => separateAttachments(attachments), [attachments]);
-
-  const imageAttachments = useMemo(() => visual.filter(isImageAttachment), [visual]);
-  const imageUrls = useMemo(() => imageAttachments.map(getAttachmentUrl), [imageAttachments]);
+  const visualMediaItems = useMemo(
+    () =>
+      visual.map((attachment) => ({
+        url: getAttachmentUrl(attachment),
+        type: isVideoAttachment(attachment) ? ("video" as const) : ("image" as const),
+        mimeType: attachment.type,
+        thumbnailUrl: getAttachmentThumbnailUrl(attachment),
+      })),
+    [visual],
+  );
 
   // Count only non-visual attachments for "Attachments" label
   const nonVisualAttachmentCount = audio.length + docs.length;
@@ -153,32 +159,32 @@ const AttachmentList = ({ attachments }: AttachmentListProps) => {
       return null;
     }
 
-    const handleImageClick = (imgUrl: string) => {
-      const index = imageUrls.findIndex((url) => url === imgUrl);
+    const handleVisualClick = (attachment: Attachment) => {
+      const sourceUrl = getAttachmentUrl(attachment);
+      const index = visualMediaItems.findIndex((item) => item.url === sourceUrl);
       if (index >= 0) {
-        const mimeType = imageAttachments[index]?.type;
-        setPreviewImage({ open: true, urls: imageUrls, index, mimeType });
+        setPreviewImage({ open: true, mediaItems: visualMediaItems, index });
       }
     };
 
     return (
       <>
-        <VisualGrid attachments={visual} onImageClick={handleImageClick} />
+        <VisualGrid attachments={visual} onVisualClick={handleVisualClick} />
         <PreviewImageDialog
           open={previewImage.open}
           onOpenChange={(open: boolean) => setPreviewImage((prev) => ({ ...prev, open }))}
-          imgUrls={previewImage.urls}
+          mediaItems={previewImage.mediaItems}
           initialIndex={previewImage.index}
         />
       </>
     );
   }
 
-  const handleImageClick = (imgUrl: string) => {
-    const index = imageUrls.findIndex((url) => url === imgUrl);
+  const handleVisualClick = (attachment: Attachment) => {
+    const sourceUrl = getAttachmentUrl(attachment);
+    const index = visualMediaItems.findIndex((item) => item.url === sourceUrl);
     if (index >= 0) {
-      const mimeType = imageAttachments[index]?.type;
-      setPreviewImage({ open: true, urls: imageUrls, index, mimeType });
+      setPreviewImage({ open: true, mediaItems: visualMediaItems, index });
     }
   };
 
@@ -186,7 +192,7 @@ const AttachmentList = ({ attachments }: AttachmentListProps) => {
     <>
       {visual.length > 0 && (
         <div className="w-full">
-          <VisualGrid attachments={visual} onImageClick={handleImageClick} />
+          <VisualGrid attachments={visual} onVisualClick={handleVisualClick} />
         </div>
       )}
 
@@ -205,7 +211,7 @@ const AttachmentList = ({ attachments }: AttachmentListProps) => {
       <PreviewImageDialog
         open={previewImage.open}
         onOpenChange={(open: boolean) => setPreviewImage((prev) => ({ ...prev, open }))}
-        imgUrls={previewImage.urls}
+        mediaItems={previewImage.mediaItems}
         initialIndex={previewImage.index}
       />
     </>
