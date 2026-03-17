@@ -99,7 +99,7 @@ const MemoView: React.FC<MemoViewProps> = (props: MemoViewProps) => {
       <PreviewImageDialog
         open={previewState.open}
         onOpenChange={setPreviewOpen}
-        imgUrls={previewState.urls}
+        mediaItems={previewState.mediaItems}
         initialIndex={previewState.index}
       />
     </article>

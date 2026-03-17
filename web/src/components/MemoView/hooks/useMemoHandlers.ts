@@ -1,13 +1,14 @@
 import { useCallback } from "react";
 import { useInstance } from "@/contexts/InstanceContext";
 import useNavigateTo from "@/hooks/useNavigateTo";
+import type { PreviewMediaItem } from "./useImagePreview";
 
 interface UseMemoHandlersOptions {
   memoName: string;
   parentPage: string;
   readonly: boolean;
   openEditor: () => void;
-  openPreview: (url: string) => void;
+  openPreview: (itemOrUrl: string | PreviewMediaItem, allItems?: PreviewMediaItem[]) => void;
 }
 
 export const useMemoHandlers = (options: UseMemoHandlersOptions) => {

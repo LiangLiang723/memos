@@ -3,7 +3,7 @@ import { FileIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
-import { getAttachmentType, getAttachmentUrl } from "@/utils/attachment";
+import { getAttachmentThumbnailUrl, getAttachmentType, getAttachmentUrl } from "@/utils/attachment";
 import MemoContent from "../MemoContent";
 import { MemoViewContext, type MemoViewContextValue } from "../MemoView/MemoViewContext";
 
@@ -27,10 +27,17 @@ const STUB_CONTEXT: MemoViewContextValue = {
 
 const AttachmentThumbnails = ({ attachments }: { attachments: Attachment[] }) => {
   const images: Attachment[] = [];
+  const videos: Attachment[] = [];
   const others: Attachment[] = [];
   for (const a of attachments) {
-    if (getAttachmentType(a) === "image/*") images.push(a);
-    else others.push(a);
+    const attachmentType = getAttachmentType(a);
+    if (attachmentType === "image/*") {
+      images.push(a);
+    } else if (attachmentType === "video/*") {
+      videos.push(a);
+    } else {
+      others.push(a);
+    }
   }
 
   return (
@@ -38,11 +45,27 @@ const AttachmentThumbnails = ({ attachments }: { attachments: Attachment[] }) =>
       {images.map((a) => (
         <img
           key={a.name}
-          src={getAttachmentUrl(a)}
+          src={getAttachmentThumbnailUrl(a)}
           alt={a.filename}
           className="w-10 h-10 rounded border border-border object-cover bg-muted/40"
           loading="lazy"
+          onError={(event) => {
+            const target = event.target as HTMLImageElement;
+            if (target.src.includes("?thumbnail=true")) {
+              target.src = getAttachmentUrl(a);
+            }
+          }}
         />
+      ))}
+      {videos.map((a) => (
+        <div key={a.name} className="relative w-10 h-10 rounded border border-border overflow-hidden bg-muted/40">
+          <video src={getAttachmentUrl(a)} className="w-full h-full object-cover" preload="metadata" muted playsInline />
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/20">
+            <div className="w-5 h-5 rounded-full bg-black/55 border border-white/45 flex items-center justify-center">
+              <div className="ml-0.5 w-0 h-0 border-y-[4px] border-y-transparent border-l-[6px] border-l-white" />
+            </div>
+          </div>
+        </div>
       ))}
       {others.map((a) => (
         <div key={a.name} className="flex items-center gap-1 text-[10px] text-muted-foreground">
