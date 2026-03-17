@@ -14,6 +14,10 @@ interface AttachmentListProps {
   onRemoveLocalFile?: (previewUrl: string) => void;
 }
 
+const isMediaAttachment = (attachment: Attachment): boolean => {
+  return attachment.type.startsWith("image/") || attachment.type.startsWith("video/");
+};
+
 const AttachmentItemCard: FC<{
   item: ReturnType<typeof toAttachmentItems>[0];
   onRemove?: () => void;
@@ -111,9 +115,12 @@ const AttachmentList: FC<AttachmentListProps> = ({ attachments, localFiles = [],
   // Editor should not show image/video inline attachments here — render only documents
   const nonMediaItems = items.filter((it) => it.category !== "image" && it.category !== "video");
   if (nonMediaItems.length === 0) return null;
+  const firstNonMediaIndex = attachments.findIndex((attachment) => !isMediaAttachment(attachment));
+  const nonMediaStartIndex = firstNonMediaIndex === -1 ? attachments.length : firstNonMediaIndex;
 
   const handleMoveUp = (index: number) => {
-    if (index === 0 || !onAttachmentsChange) return;
+    if (index <= nonMediaStartIndex || !onAttachmentsChange) return;
+    if (isMediaAttachment(attachments[index - 1])) return;
 
     const newAttachments = [...attachments];
     [newAttachments[index - 1], newAttachments[index]] = [newAttachments[index], newAttachments[index - 1]];
@@ -122,6 +129,8 @@ const AttachmentList: FC<AttachmentListProps> = ({ attachments, localFiles = [],
 
   const handleMoveDown = (index: number) => {
     if (index === attachments.length - 1 || !onAttachmentsChange) return;
+    if (index < nonMediaStartIndex) return;
+    if (isMediaAttachment(attachments[index + 1])) return;
 
     const newAttachments = [...attachments];
     [newAttachments[index], newAttachments[index + 1]] = [newAttachments[index + 1], newAttachments[index]];
@@ -161,8 +170,13 @@ const AttachmentList: FC<AttachmentListProps> = ({ attachments, localFiles = [],
               onRemove={() => handleRemoveItem(item)}
               onMoveUp={!isLocalFile ? () => handleMoveUp(attachmentIndex) : undefined}
               onMoveDown={!isLocalFile ? () => handleMoveDown(attachmentIndex) : undefined}
-              canMoveUp={!isLocalFile && attachmentIndex > 0}
-              canMoveDown={!isLocalFile && attachmentIndex < attachments.length - 1}
+              canMoveUp={!isLocalFile && attachmentIndex > nonMediaStartIndex && !isMediaAttachment(attachments[attachmentIndex - 1])}
+              canMoveDown={
+                !isLocalFile &&
+                attachmentIndex >= nonMediaStartIndex &&
+                attachmentIndex < attachments.length - 1 &&
+                !isMediaAttachment(attachments[attachmentIndex + 1])
+              }
             />
           );
         })}
