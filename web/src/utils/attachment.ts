@@ -12,6 +12,11 @@ export const getAttachmentThumbnailUrl = (attachment: Attachment) => {
   return `${window.location.origin}/file/${attachment.name}/${attachment.filename}?thumbnail=true`;
 };
 
+// Animated images should use the original source URL to keep animation frames.
+export const isAnimatedImageMimeType = (mimeType: string): boolean => {
+  return mimeType === "image/gif" || mimeType === "image/apng" || mimeType === "image/webp";
+};
+
 export const getAttachmentType = (attachment: Attachment) => {
   if (isImage(attachment.type)) {
     return "image/*";

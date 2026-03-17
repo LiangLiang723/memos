@@ -84,15 +84,17 @@ interface VisualItemProps {
 }
 
 const VisualItem = ({ attachment, onImageClick }: VisualItemProps) => {
+  const isImage = isImageAttachment(attachment);
+
   const handleClick = () => {
-    if (isImageAttachment(attachment)) {
+    if (isImage) {
       onImageClick(getAttachmentUrl(attachment));
     }
   };
 
   return (
     <div
-      className="aspect-square rounded-lg overflow-hidden bg-muted/40 border border-border hover:border-accent/50 transition-all cursor-pointer group"
+      className={`aspect-square rounded-lg overflow-hidden bg-muted/40 border border-border hover:border-accent/50 transition-all ${isImage ? "cursor-pointer group" : ""}`}
       onClick={handleClick}
     >
       <AttachmentCard attachment={attachment} className="rounded-none" />
@@ -142,25 +144,26 @@ const AttachmentList = ({ attachments }: AttachmentListProps) => {
   const imageAttachments = useMemo(() => visual.filter(isImageAttachment), [visual]);
   const imageUrls = useMemo(() => imageAttachments.map(getAttachmentUrl), [imageAttachments]);
 
-  // Count only non-image attachments for "Attachments" label
-  const nonImageAttachmentCount = audio.length + docs.length;
+  // Count only non-visual attachments for "Attachments" label
+  const nonVisualAttachmentCount = audio.length + docs.length;
 
-  // If there are no non-image attachments, only show images (or nothing if no images either)
-  if (nonImageAttachmentCount === 0) {
-    if (imageAttachments.length === 0) {
+  // If there are no non-visual attachments, only show media grid (image/video) or nothing.
+  if (nonVisualAttachmentCount === 0) {
+    if (visual.length === 0) {
       return null;
     }
 
-    // Only images, no "Attachments" label
     const handleImageClick = (imgUrl: string) => {
       const index = imageUrls.findIndex((url) => url === imgUrl);
-      const mimeType = imageAttachments[index]?.type;
-      setPreviewImage({ open: true, urls: imageUrls, index, mimeType });
+      if (index >= 0) {
+        const mimeType = imageAttachments[index]?.type;
+        setPreviewImage({ open: true, urls: imageUrls, index, mimeType });
+      }
     };
 
     return (
       <>
-        <VisualGrid attachments={imageAttachments} onImageClick={handleImageClick} />
+        <VisualGrid attachments={visual} onImageClick={handleImageClick} />
         <PreviewImageDialog
           open={previewImage.open}
           onOpenChange={(open: boolean) => setPreviewImage((prev) => ({ ...prev, open }))}
@@ -173,20 +176,22 @@ const AttachmentList = ({ attachments }: AttachmentListProps) => {
 
   const handleImageClick = (imgUrl: string) => {
     const index = imageUrls.findIndex((url) => url === imgUrl);
-    const mimeType = imageAttachments[index]?.type;
-    setPreviewImage({ open: true, urls: imageUrls, index, mimeType });
+    if (index >= 0) {
+      const mimeType = imageAttachments[index]?.type;
+      setPreviewImage({ open: true, urls: imageUrls, index, mimeType });
+    }
   };
 
   return (
     <>
-      {imageAttachments.length > 0 && (
+      {visual.length > 0 && (
         <div className="w-full">
-          <VisualGrid attachments={imageAttachments} onImageClick={handleImageClick} />
+          <VisualGrid attachments={visual} onImageClick={handleImageClick} />
         </div>
       )}
 
       <div className="w-full rounded-lg border border-border bg-muted/20 overflow-hidden">
-        <SectionHeader icon={PaperclipIcon} title={t("common.attachments")} count={nonImageAttachmentCount} />
+        <SectionHeader icon={PaperclipIcon} title={t("common.attachments")} count={nonVisualAttachmentCount} />
 
         <div className="p-1.5 flex flex-col gap-1">
           {audio.length > 0 && <AudioList attachments={audio} />}

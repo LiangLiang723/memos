@@ -12,7 +12,7 @@ import {
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
-import { getAttachmentThumbnailUrl, getAttachmentType, getAttachmentUrl } from "@/utils/attachment";
+import { getAttachmentThumbnailUrl, getAttachmentType, getAttachmentUrl, isAnimatedImageMimeType } from "@/utils/attachment";
 import SquareDiv from "./kit/SquareDiv";
 import PreviewImageDialog from "./PreviewImageDialog";
 
@@ -31,6 +31,7 @@ const AttachmentIcon = (props: Props) => {
   });
   const resourceType = getAttachmentType(attachment);
   const attachmentUrl = getAttachmentUrl(attachment);
+  const previewUrl = isAnimatedImageMimeType(attachment.type) ? attachmentUrl : getAttachmentThumbnailUrl(attachment);
   const className = cn("w-full h-auto", props.className);
   const strokeWidth = props.strokeWidth;
 
@@ -48,7 +49,7 @@ const AttachmentIcon = (props: Props) => {
         <SquareDiv className={cn(className, "flex items-center justify-center overflow-clip")}>
           <img
             className="min-w-full min-h-full object-cover"
-            src={getAttachmentThumbnailUrl(attachment)}
+            src={previewUrl}
             onClick={handleImageClick}
             onError={(e) => {
               // Fallback to original image if thumbnail fails

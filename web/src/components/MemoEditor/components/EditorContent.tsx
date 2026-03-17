@@ -70,16 +70,13 @@ export const EditorContent = forwardRef<EditorRefActions, EditorContentProps>(({
         onCompositionStart={handleCompositionStart}
         onCompositionEnd={handleCompositionEnd}
       />
-      {/* Inline image previews for editor uploads: placed after editor content */}
+      {/* Inline media previews for editor uploads: placed after editor content */}
       {(() => {
         const items = toAttachmentItems(state.metadata.attachments, state.localFiles);
-        const imageItems = items.filter((it) => it.category === "image");
-        if (imageItems.length === 0) return null;
+        const mediaItems = items.filter((it) => it.category === "image" || it.category === "video");
+        if (mediaItems.length === 0) return null;
 
-        // Show images in rows with max 3 columns per row (unlimited rows)
-        const imagesToShow = imageItems;
-
-        const handleRemoveImage = (id: string, isLocal: boolean) => {
+        const handleRemoveMedia = (id: string, isLocal: boolean) => {
           if (isLocal) {
             dispatch(actions.removeLocalFile(id));
             return;
@@ -89,15 +86,19 @@ export const EditorContent = forwardRef<EditorRefActions, EditorContentProps>(({
 
         return (
           <div className="mt-3 grid gap-2 grid-cols-3 lg:grid-cols-5">
-            {imagesToShow.map((img) => (
-              <div key={img.id} className="relative group aspect-square rounded-lg overflow-hidden border border-border bg-muted/40">
-                <img src={img.thumbnailUrl} alt={img.filename} className="w-full h-full object-cover" />
+            {mediaItems.map((media) => (
+              <div key={media.id} className="relative group aspect-square rounded-lg overflow-hidden border border-border bg-muted/40">
+                {media.category === "video" ? (
+                  <video src={media.sourceUrl} className="w-full h-full object-cover" controls preload="metadata" />
+                ) : (
+                  <img src={media.thumbnailUrl} alt={media.filename} className="w-full h-full object-cover" />
+                )}
                 <button
                   type="button"
-                  onClick={() => handleRemoveImage(img.id, img.isLocal)}
+                  onClick={() => handleRemoveMedia(media.id, media.isLocal)}
                   className="absolute top-1 right-1 inline-flex items-center justify-center size-5 rounded-full bg-black/60 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-                  aria-label="移除图片"
-                  title="移除图片"
+                  aria-label={media.category === "video" ? "移除视频" : "移除图片"}
+                  title={media.category === "video" ? "移除视频" : "移除图片"}
                 >
                   <XIcon className="size-3" />
                 </button>
