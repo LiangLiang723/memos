@@ -1,6 +1,6 @@
 import * as exifr from "exifr";
 import { LatLng } from "leaflet";
-import { InfoIcon, X } from "lucide-react";
+import { InfoIcon, X, PlayIcon } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { LocationPicker } from "@/components/map";
 import { resolveLocationLabel } from "@/components/map/geocoding";
@@ -8,6 +8,7 @@ import { getMapSettingWithDefaults } from "@/components/map/map-setting";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useInstance } from "@/contexts/InstanceContext";
+import { isAnimatedImageMimeType } from "@/utils/attachment";
 
 export interface PreviewMediaItem {
   url: string;
@@ -77,12 +78,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
 
   const isLikelyLivePhotoMimeType = (mimeType: string | undefined, url: string): boolean => {
     const normalized = (mimeType || "").toLowerCase();
-    if (
-      normalized.includes("jpeg") ||
-      normalized.includes("jpg") ||
-      normalized.includes("heic") ||
-      normalized.includes("heif")
-    ) {
+    if (normalized.includes("jpeg") || normalized.includes("jpg") || normalized.includes("heic") || normalized.includes("heif")) {
       return true;
     }
 
@@ -366,8 +362,9 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
 
   const currentImageSrc = useMemo(() => {
     if (!currentMedia || currentMedia.type !== "image") return "";
+    if (imageDisplayMode === "motion-video") return currentMedia.url;
     return currentMedia.thumbnailUrl || currentMedia.url;
-  }, [currentMedia]);
+  }, [currentMedia, imageDisplayMode]);
 
   useEffect(() => {
     setCurrentIndex(initialIndex);
@@ -390,6 +387,17 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
     const detectLivePhoto = async () => {
       if (!open || !currentMedia || currentMedia.type !== "image") {
         setLivePhoto({ loading: false, canPlay: false });
+        return;
+      }
+
+      const pathname = currentMedia.url.split("?")[0]?.toLowerCase() || "";
+      const isAnimated =
+        (currentMedia.mimeType && isAnimatedImageMimeType(currentMedia.mimeType)) ||
+        pathname.endsWith(".gif") ||
+        pathname.endsWith(".webp") ||
+        pathname.endsWith(".apng");
+      if (isAnimated) {
+        setLivePhoto({ loading: false, canPlay: true, motionVideoUrl: undefined });
         return;
       }
 
@@ -578,15 +586,16 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
           </div>
         )}
 
-        {!isCurrentVideo && livePhoto.canPlay && (
+        {!isCurrentVideo && livePhoto.canPlay && imageDisplayMode !== "motion-video" && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
             <Button
               onClick={handlePlayAnimated}
               variant="secondary"
               size="sm"
-              className="h-11 px-5 text-base rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
+              className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
               aria-label="播放动图一次"
             >
+              <PlayIcon className="h-4 w-4 mr-1" />
               播放动图
             </Button>
           </div>

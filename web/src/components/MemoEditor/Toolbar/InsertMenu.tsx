@@ -251,7 +251,14 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
     return () => {
       cancelled = true;
     };
-  }, [imageCandidateDistanceMeters, mapSetting.amapApiKey, mapSetting.amapSecurityKey, mapSetting.provider, state.localFiles, state.metadata.attachments]);
+  }, [
+    imageCandidateDistanceMeters,
+    mapSetting.amapApiKey,
+    mapSetting.amapSecurityKey,
+    mapSetting.provider,
+    state.localFiles,
+    state.metadata.attachments,
+  ]);
 
   useEffect(() => {
     if (!isCreatingMemo) {

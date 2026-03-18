@@ -7,10 +7,10 @@ export const useFileUpload = (onFilesSelected: (localFiles: LocalFile[]) => void
   const imagesOnlyRef = useRef(false);
 
   const isImageFile = (file: File): boolean => {
-    if (file.type.startsWith("image/")) {
+    if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
       return true;
     }
-    return /\.(avif|bmp|gif|heic|heif|jpeg|jpg|png|tiff|tif|webp)$/i.test(file.name);
+    return /\.(avif|bmp|gif|heic|heif|jpeg|jpg|png|tiff|tif|webp|mp4|webm|mov|mkv)$/i.test(file.name);
   };
 
   const handleFileInputChange = (event?: React.ChangeEvent<HTMLInputElement>) => {
@@ -31,7 +31,14 @@ export const useFileUpload = (onFilesSelected: (localFiles: LocalFile[]) => void
 
   const handleUploadClick = (options?: { imagesOnly?: boolean }) => {
     imagesOnlyRef.current = Boolean(options?.imagesOnly);
-    fileInputRef.current?.click();
+    if (fileInputRef.current) {
+      if (options?.imagesOnly) {
+        fileInputRef.current.accept = "image/*,video/*";
+      } else {
+        fileInputRef.current.accept = "*";
+      }
+      fileInputRef.current.click();
+    }
   };
 
   return {
