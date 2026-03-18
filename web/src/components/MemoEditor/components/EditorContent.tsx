@@ -89,7 +89,14 @@ export const EditorContent = forwardRef<EditorRefActions, EditorContentProps>(({
             {mediaItems.map((media) => (
               <div key={media.id} className="relative group aspect-square rounded-lg overflow-hidden border border-border bg-muted/40">
                 {media.category === "video" ? (
-                  <video src={media.sourceUrl} className="w-full h-full object-cover" controls preload="metadata" />
+                  <video
+                    src={media.sourceUrl + "#t=0.1"}
+                    className="w-full h-full object-cover"
+                    controls
+                    preload="metadata"
+                    playsInline
+                    x5-video-player-type="h5"
+                  />
                 ) : (
                   <img src={media.thumbnailUrl} alt={media.filename} className="w-full h-full object-cover" />
                 )}
