@@ -447,10 +447,6 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
     onToggleFocusMode?.();
   }, [onToggleFocusMode]);
 
-  const handleImageUploadClick = useCallback(() => {
-    handleUploadClick({ imagesOnly: true });
-  }, [handleUploadClick]);
-
   return (
     <>
       {/* Flat button group for file upload, link memo, and location */}
@@ -465,13 +461,6 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="start">
-              <DropdownMenuItem
-                onClick={() => {
-                  handleImageUploadClick();
-                }}
-              >
-                <ImageIcon className="size-4" /> {t("common.image")}
-              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
                   handleUploadClick();
@@ -504,18 +493,6 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
           </DropdownMenu>
         ) : (
           <>
-            {/* Mobile quick image picker */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleImageUploadClick}
-              disabled={isUploading}
-              title={t("common.image")}
-              className="px-2 md:hidden"
-            >
-              <ImageIcon className="size-4" />
-            </Button>
-
             {/* Upload button */}
             <Button
               variant="outline"

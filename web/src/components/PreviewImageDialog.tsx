@@ -1,6 +1,6 @@
 import * as exifr from "exifr";
 import { LatLng } from "leaflet";
-import { InfoIcon, X, PlayIcon } from "lucide-react";
+import { InfoIcon, PlayIcon, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { LocationPicker } from "@/components/map";
 import { resolveLocationLabel } from "@/components/map/geocoding";
