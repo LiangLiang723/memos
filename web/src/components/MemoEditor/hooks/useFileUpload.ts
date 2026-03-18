@@ -33,7 +33,7 @@ export const useFileUpload = (onFilesSelected: (localFiles: LocalFile[]) => void
     imagesOnlyRef.current = Boolean(options?.imagesOnly);
     if (fileInputRef.current) {
       if (options?.imagesOnly) {
-        fileInputRef.current.accept = "image/*,video/*";
+        fileInputRef.current.accept = "image/*";
       } else {
         fileInputRef.current.accept = "*";
       }
