@@ -794,7 +794,14 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
               }
             >
               {isCurrentVideo ? (
-                <video src={currentMedia?.url} controls className="block w-full h-full object-contain" preload="metadata" playsInline />
+                <video
+                  src={currentMedia?.url ? currentMedia.url + "#t=0.1" : undefined}
+                  controls
+                  className="block w-full h-full object-contain"
+                  preload="metadata"
+                  playsInline
+                  x5-video-player-type="h5"
+                />
               ) : imageDisplayMode === "motion-video" && livePhoto.motionVideoUrl ? (
                 <video
                   src={livePhoto.motionVideoUrl}
