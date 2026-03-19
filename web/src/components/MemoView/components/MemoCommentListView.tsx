@@ -1,13 +1,135 @@
-import { ArrowUpRightIcon } from "lucide-react";
-import { Link } from "react-router-dom";
-import { extractMemoIdFromName } from "@/helpers/resource-names";
+import { timestampDate } from "@bufbuild/protobuf/wkt";
+import dayjs from "dayjs";
+import { ArrowUpRightIcon, ChevronDownIcon, ChevronUpIcon, PaperclipIcon } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import MemoContent from "@/components/MemoContent";
+import UserAvatar from "@/components/UserAvatar";
 import { useMemoComments } from "@/hooks/useMemoQueries";
+import { useUser } from "@/hooks/useUserQueries";
+import { cn } from "@/lib/utils";
+import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
+import { useTranslate } from "@/utils/i18n";
 import { useMemoViewContext, useMemoViewDerived } from "../MemoViewContext";
-import MemoSnippetLink from "./MemoSnippetLink";
+import { AttachmentList } from "./metadata";
+
+const SubCommentList = ({ parentName }: { parentName: string }) => {
+  const { data } = useMemoComments(parentName);
+  const comments = data?.memos ?? [];
+  if (comments.length === 0) return null;
+
+  const sorted = [...comments].sort((a, b) => Number(a.createTime?.seconds || 0) - Number(b.createTime?.seconds || 0));
+
+  return (
+    <div className="flex flex-col gap-1.5 mt-2 pl-3 border-l-2 border-border/50">
+      {sorted.map((c) => (
+        <SubCommentItem key={c.name} comment={c} />
+      ))}
+    </div>
+  );
+};
+
+const SubCommentItem = ({ comment }: { comment: Memo }) => {
+  const creator = useUser(comment.creator).data;
+  const navigate = useNavigate();
+  const createTime = comment.createTime ? timestampDate(comment.createTime) : new Date();
+
+  const displayName = creator?.nickname || creator?.displayName || creator?.username;
+
+  return (
+    <div
+      className="flex gap-2 w-full cursor-pointer group"
+      onClick={(e) => {
+        e.stopPropagation();
+        navigate(`${comment.name}`);
+      }}
+    >
+      <UserAvatar className="w-5 h-5 rounded-md shrink-0 mt-0.5" avatarUrl={creator?.avatarUrl} />
+      <div className="flex flex-col w-full min-w-0">
+        <div className="flex items-center gap-2 opacity-80">
+          <span className="text-[13px] font-semibold text-foreground">{displayName}</span>
+          <span className="text-[11px] text-muted-foreground">{dayjs(createTime).format("MM-DD HH:mm")}</span>
+        </div>
+        <div className="opacity-90 text-[13px] leading-snug">
+          <MemoContent content={comment.content} compact={true} />
+        </div>
+        {comment.attachments && comment.attachments.length > 0 && (
+          <div className="mt-1 w-full max-w-xs rounded-lg overflow-hidden border border-border/50">
+            <AttachmentList attachments={comment.attachments} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+
+const CommentItem = ({ comment, collapsed }: { comment: Memo; collapsed: boolean }) => {
+  const creator = useUser(comment.creator).data;
+  const navigate = useNavigate();
+
+  const handleGotoDetail = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/${comment.name}`);
+  };
+
+  const createTime = comment.createTime ? timestampDate(comment.createTime) : new Date();
+  const displayName = creator?.nickname || creator?.displayName || creator?.username || "Unknown";
+
+  if (collapsed) {
+    return (
+      <div className="flex items-center gap-2 py-1.5 px-2.5 mx-4 my-1 bg-card border border-border/40 rounded-lg hover:shadow-md shadow-sm transition-all cursor-pointer" onClick={handleGotoDetail}>
+        <UserAvatar className="w-5 h-5 rounded-md shrink-0" avatarUrl={creator?.avatarUrl} />
+        <div className="flex-1 truncate opacity-80 flex items-center gap-1">
+          <span className="text-[14px] font-medium text-foreground shrink-0">{displayName}:</span>
+          <span className="truncate text-[13px]">{comment.snippet || comment.content}</span>
+        </div>
+        {comment.attachments && comment.attachments.length > 0 && (
+          <div className="flex items-center gap-0.5 shrink-0 text-[11px] text-muted-foreground opacity-80 bg-muted/50 px-1.5 py-0.5 rounded">
+            <PaperclipIcon className="w-3 h-3" />
+            <span>{comment.attachments.length}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-2.5 p-3 mx-4 my-1.5 bg-card border border-border/50 rounded-xl cursor-pointer hover:shadow-md shadow-sm transition-all" onClick={handleGotoDetail}>
+      <div className="shrink-0">
+        <Link to={`/u/${encodeURIComponent(creator?.username || "")}`} onClick={(e) => e.stopPropagation()}>
+          <UserAvatar className="w-8 h-8 rounded-lg shrink-0" avatarUrl={creator?.avatarUrl} />
+        </Link>
+      </div>
+
+      <div className="flex flex-col w-full min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className="text-[14px] font-medium text-foreground/90 hover:text-primary transition-colors">{displayName}</span>
+          <span className="text-[12px] text-muted-foreground/60">{dayjs(createTime).format("MM-DD HH:mm")}</span>
+        </div>
+
+        <div className="text-[14px] text-foreground/90 mb-1 leading-relaxed">
+          <MemoContent content={comment.content} compact={true} />
+        </div>
+
+        {comment.attachments && comment.attachments.length > 0 && (
+          <div className="mt-1 w-full max-w-sm">
+            <AttachmentList attachments={comment.attachments} />
+          </div>
+        )}
+
+        <SubCommentList parentName={comment.name} />
+      </div>
+    </div>
+  );
+};
 
 const MemoCommentListView: React.FC = () => {
   const { memo } = useMemoViewContext();
   const { isInMemoDetailPage, commentAmount } = useMemoViewDerived();
+  const t = useTranslate();
+  const defaultExpanded = localStorage.getItem("memos_comment_default_expanded");
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded === "true");
 
   const { data } = useMemoComments(memo.name, { enabled: !isInMemoDetailPage && commentAmount > 0 });
   const comments = data?.memos ?? [];
@@ -16,32 +138,36 @@ const MemoCommentListView: React.FC = () => {
     return null;
   }
 
-  const displayedComments = comments.slice(0, 3);
+  const sortedComments = [...comments].sort((a, b) => Number(a.createTime?.seconds || 0) - Number(b.createTime?.seconds || 0));
+
+  const displayedComments = isExpanded ? sortedComments : sortedComments.slice(0, 3);
 
   return (
-    <div className="border border-t-0 border-border rounded-b-xl px-4 pt-2 pb-3 flex flex-col gap-1">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-xs text-muted-foreground">Comments{commentAmount > 1 ? ` (${commentAmount})` : ""}</span>
+    <div className="border border-t-0 border-border rounded-b-lg px-0 pt-0 pb-0 flex flex-col gap-0 overflow-hidden bg-zinc-50 dark:bg-zinc-900/50">
+      <div 
+        className="flex items-center justify-between px-3 py-2 bg-transparent border-b border-border/50 cursor-pointer hover:bg-muted/30 transition-colors"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground group">
+          {t("memo.comment.self")} {commentAmount > 1 ? `(${commentAmount})` : ""}
+          <div className="p-0.5 rounded-full group-hover:bg-background transition-colors ml-1">
+            {isExpanded ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />}
+          </div>
+        </div>
         <Link
           to={`/${memo.name}#comments`}
-          className="flex items-center gap-0.5 text-xs text-muted-foreground/80 hover:underline underline-offset-2 transition-colors"
+          className="flex items-center gap-0.5 text-[13px] text-muted-foreground/80 hover:text-primary transition-colors"
+          onClick={(e) => e.stopPropagation()}
         >
-          View all
+          {t("memo.view-all")}
           <ArrowUpRightIcon className="w-3 h-3" />
         </Link>
       </div>
-      {displayedComments.map((comment) => {
-        const uid = extractMemoIdFromName(comment.name);
-        return (
-          <MemoSnippetLink
-            key={comment.name}
-            name={comment.name}
-            snippet={comment.snippet || comment.content}
-            to={`/${memo.name}#${uid}`}
-            className="bg-muted/40 rounded-md"
-          />
-        );
-      })}
+      <div className={cn("flex flex-col bg-transparent", isExpanded ? "gap-0 py-1" : "gap-0 py-1")}>
+        {displayedComments.map((comment) => (
+          <CommentItem key={comment.name} comment={comment} collapsed={!isExpanded} />
+        ))}
+      </div>
     </div>
   );
 };

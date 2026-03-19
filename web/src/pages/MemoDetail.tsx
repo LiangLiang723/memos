@@ -1,4 +1,4 @@
-import { ConnectError } from "@connectrpc/connect";
+﻿import { ConnectError } from "@connectrpc/connect";
 import { ArrowUpLeftFromCircleIcon, MessageCircleIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -45,7 +45,9 @@ const MemoDetail = () => {
   const { data: commentsResponse } = useMemoComments(memoName, {
     enabled: !!memo,
   });
-  const comments = commentsResponse?.memos || [];
+  const comments = [...(commentsResponse?.memos || [])].sort(
+    (a, b) => Number(a.createTime?.seconds || 0) - Number(b.createTime?.seconds || 0),
+  );
 
   const { hash } = useLocation();
   useEffect(() => {
