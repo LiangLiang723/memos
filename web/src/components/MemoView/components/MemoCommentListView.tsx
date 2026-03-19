@@ -78,7 +78,7 @@ const CommentItem = ({ comment, collapsed }: { comment: Memo; collapsed: boolean
 
   if (collapsed) {
     return (
-      <div className="flex items-center gap-2 py-1.5 px-2.5 mx-4 my-1 bg-card border border-border/40 rounded-lg hover:shadow-md shadow-sm transition-all cursor-pointer" onClick={handleGotoDetail}>
+      <div className="flex items-center gap-2 py-1.5 px-2.5 mx-2 my-1 bg-card border border-border/40 rounded-lg hover:shadow-md shadow-sm transition-all cursor-pointer" onClick={handleGotoDetail}>
         <UserAvatar className="w-5 h-5 rounded-md shrink-0" avatarUrl={creator?.avatarUrl} />
         <div className="flex-1 truncate opacity-80 flex items-center gap-1">
           <span className="text-[14px] font-medium text-foreground shrink-0">{displayName}:</span>
@@ -95,7 +95,7 @@ const CommentItem = ({ comment, collapsed }: { comment: Memo; collapsed: boolean
   }
 
   return (
-    <div className="flex gap-2.5 p-3 mx-4 my-1.5 bg-card border border-border/50 rounded-xl cursor-pointer hover:shadow-md shadow-sm transition-all" onClick={handleGotoDetail}>
+    <div className="flex gap-2.5 p-3 mx-2 my-1.5 bg-card border border-border/50 rounded-xl cursor-pointer hover:shadow-md shadow-sm transition-all" onClick={handleGotoDetail}>
       <div className="shrink-0">
         <Link to={`/u/${encodeURIComponent(creator?.username || "")}`} onClick={(e) => e.stopPropagation()}>
           <UserAvatar className="w-8 h-8 rounded-lg shrink-0" avatarUrl={creator?.avatarUrl} />
@@ -143,9 +143,9 @@ const MemoCommentListView: React.FC = () => {
   const displayedComments = isExpanded ? sortedComments : sortedComments.slice(0, 3);
 
   return (
-    <div className="border border-t-0 border-border rounded-b-lg px-0 pt-0 pb-0 flex flex-col gap-0 overflow-hidden bg-zinc-50 dark:bg-zinc-900/50">
+    <div className="w-full mt-1 border border-border/60 rounded-lg flex flex-col gap-0 overflow-hidden bg-background">
       <div 
-        className="flex items-center justify-between px-3 py-2 bg-transparent border-b border-border/50 cursor-pointer hover:bg-muted/30 transition-colors"
+        className="flex items-center justify-between px-4 py-2 bg-transparent border-b border-border/50 cursor-pointer hover:bg-muted/50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground group">

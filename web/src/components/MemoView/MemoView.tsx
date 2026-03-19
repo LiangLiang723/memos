@@ -76,7 +76,7 @@ const MemoView: React.FC<MemoViewProps> = (props: MemoViewProps) => {
 
   const article = (
     <article
-      className={cn(MEMO_CARD_BASE_CLASSES, showCommentPreview ? "mb-0 rounded-b-none" : "mb-2", className)}
+      className={cn(MEMO_CARD_BASE_CLASSES, "mb-2", className)}
       ref={cardRef}
       tabIndex={readonly ? -1 : 0}
     >
@@ -96,6 +96,8 @@ const MemoView: React.FC<MemoViewProps> = (props: MemoViewProps) => {
         onToggleNsfwVisibility={toggleNsfwVisibility}
       />
 
+      {showCommentPreview && <MemoCommentListView />}
+
       <PreviewImageDialog
         open={previewState.open}
         onOpenChange={setPreviewOpen}
@@ -107,14 +109,7 @@ const MemoView: React.FC<MemoViewProps> = (props: MemoViewProps) => {
 
   return (
     <MemoViewContext.Provider value={contextValue}>
-      {showCommentPreview ? (
-        <div className="mb-2">
-          {article}
-          <MemoCommentListView />
-        </div>
-      ) : (
-        article
-      )}
+      {article}
     </MemoViewContext.Provider>
   );
 };
