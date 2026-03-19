@@ -226,16 +226,8 @@ const Attachments = () => {
         nextPageToken = response.nextPageToken;
       } while (nextPageToken);
 
-      const unavailableChecks = await Promise.all(allAttachments.map((attachment) => isAttachmentUnavailable(attachment)));
-      const unavailableAttachmentNames = new Set(
-        allAttachments.filter((_, index) => unavailableChecks[index]).map((attachment) => attachment.name),
-      );
-
-      const allUnusedAttachments = allAttachments.filter(
-        (attachment) => !attachment.memo || unavailableAttachmentNames.has(attachment.name),
-      );
+      const allUnusedAttachments = allAttachments.filter((attachment) => !attachment.memo);
       await Promise.all(allUnusedAttachments.map((attachment) => deleteAttachment(attachment.name)));
-
       toast.success(t("resource.delete-all-unused-success"));
     } catch (error) {
       handleError(error, toast.error, {
