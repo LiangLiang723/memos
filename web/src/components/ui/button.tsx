@@ -8,10 +8,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-xs hover:bg-primary/95 active:bg-primary/85",
-        destructive: "bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/95 active:bg-destructive/85",
-        outline: "border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground hover:border-ring",
-        secondary: "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/90 active:bg-secondary/75",
+        default: "bg-primary text-primary-foreground shadow-primary-3d border border-primary/20 hover:bg-primary/95 active:bg-primary/85",
+        destructive: "bg-destructive text-destructive-foreground shadow-destructive-3d hover:bg-destructive/95 active:bg-destructive/85 transition-all duration-200",
+        outline: "border border-input border-border/50 bg-background shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:bg-accent hover:text-accent-foreground hover:border-ring transition-all duration-200",
+        secondary: "bg-secondary text-secondary-foreground shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:bg-secondary/90 active:bg-secondary/75 transition-all duration-200",
         ghost: "hover:bg-accent hover:text-accent-foreground active:bg-muted",
         link: "text-primary underline-offset-4 hover:underline",
       },
@@ -47,3 +47,5 @@ const Button = React.forwardRef<
 Button.displayName = "Button";
 
 export { Button, buttonVariants };
+
+
