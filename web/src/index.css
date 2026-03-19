@@ -91,6 +91,25 @@
     box-shadow: 2px 6px 12px 0px color-mix(in srgb, var(--primary) 40%, transparent),
                 1px 3px 6px 0px color-mix(in srgb, var(--primary) 25%, transparent) !important;
   }
+  .shadow-destructive-3d {
+    box-shadow: 2px 4px 8px 0px color-mix(in srgb, var(--destructive) 15%, transparent),
+                1px 2px 4px 0px color-mix(in srgb, var(--destructive) 10%, transparent) !important;
+    transition: all 0.2s ease-in-out !important;
+  }
+  .shadow-destructive-3d:hover {
+    box-shadow: 2px 6px 12px 0px color-mix(in srgb, var(--destructive) 20%, transparent),
+                1px 3px 6px 0px color-mix(in srgb, var(--destructive) 15%, transparent) !important;
+    transform: translateY(-0.5px) !important;
+  }
+
+  html[data-theme="default-dark"] .shadow-destructive-3d {
+    box-shadow: 2px 4px 8px 0px color-mix(in srgb, var(--destructive) 30%, transparent),
+                1px 2px 4px 0px color-mix(in srgb, var(--destructive) 20%, transparent) !important;
+  }
+  html[data-theme="default-dark"] .shadow-destructive-3d:hover {
+    box-shadow: 2px 6px 12px 0px color-mix(in srgb, var(--destructive) 40%, transparent),
+                1px 3px 6px 0px color-mix(in srgb, var(--destructive) 25%, transparent) !important;
+  }
 }
 
 
@@ -202,6 +221,7 @@
     background: var(--muted-foreground);
   }
 }
+
 
 
 

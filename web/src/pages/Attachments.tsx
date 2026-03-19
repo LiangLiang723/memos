@@ -78,7 +78,7 @@ const _isAttachmentUnavailable = async (attachment: Attachment): Promise<boolean
 
 const AttachmentItem = ({ attachment }: AttachmentItemProps) => (
   <div className="w-full h-auto flex flex-col justify-start items-start">
-    <div className="w-full h-0 pb-[100%] relative overflow-hidden rounded-lg border border-border bg-muted/40 cursor-pointer transition-all hover:border-accent/50">
+    <div className="w-full h-0 pb-[100%] relative overflow-hidden rounded-lg border border-border/50 bg-muted/40 shadow-sm cursor-pointer transition-all duration-200 hover:border-accent/50 hover:shadow-md hover:-translate-y-0.5">
       <div className="absolute inset-0 flex items-center justify-center">
         <AttachmentIcon attachment={attachment} strokeWidth={0.5} />
       </div>
@@ -281,7 +281,7 @@ const Attachments = () => {
     <section className="@container w-full max-w-5xl min-h-full flex flex-col justify-start items-center sm:pt-3 md:pt-6 pb-8">
       {!md && <MobileHeader />}
       <div className="w-full px-4 sm:px-6">
-        <div className="w-full border border-border flex flex-col justify-start items-start px-4 py-3 rounded-xl bg-background text-foreground">
+        <div className="w-full border border-border/50 flex flex-col justify-start items-start px-4 py-3 rounded-xl bg-background shadow-sm text-foreground">
           <div className="relative w-full flex flex-row justify-between items-center">
             <p className="py-1 flex flex-row justify-start items-center select-none opacity-80">
               <PaperclipIcon className="w-6 h-auto mr-1 opacity-80" />
@@ -425,3 +425,4 @@ const Attachments = () => {
 };
 
 export default Attachments;
+

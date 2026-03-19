@@ -36,7 +36,7 @@ const Inboxes = () => {
     <section className="@container w-full max-w-5xl min-h-full flex flex-col justify-start items-center sm:pt-3 md:pt-6 pb-8">
       {!md && <MobileHeader />}
       <div className="w-full px-4 sm:px-6">
-        <div className="w-full border border-border flex flex-col justify-start items-start rounded-xl bg-background text-foreground overflow-hidden">
+        <div className="w-full border border-border/50 flex flex-col justify-start items-start rounded-xl bg-background text-foreground overflow-hidden shadow-sm">
           {/* Header */}
           <div className="w-full px-4 py-4 border-b border-border">
             <div className="flex flex-row justify-between items-center">
@@ -120,3 +120,4 @@ const Inboxes = () => {
 };
 
 export default Inboxes;
+

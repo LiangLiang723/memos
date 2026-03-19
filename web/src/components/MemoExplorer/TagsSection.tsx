@@ -69,15 +69,15 @@ const TagsSection = (props: Props) => {
                 <div
                   key={tag}
                   className={cn(
-                    "shrink-0 w-auto max-w-full text-sm rounded-md leading-6 flex flex-row justify-start items-center select-none cursor-pointer transition-colors",
+                    "shrink-0 w-auto  text-sm rounded-md leading-6 flex flex-row justify-start items-center select-none cursor-pointer transition-colors",
                     "hover:opacity-80",
                     isActive ? "text-primary" : "text-muted-foreground",
                   )}
                   onClick={() => handleTagClick(tag)}
                 >
                   <HashIcon className="w-4 h-auto shrink-0" />
-                  <div className="inline-flex flex-nowrap ml-0.5 gap-0.5 max-w-[calc(100%-16px)]">
-                    <span className={cn("truncate", isActive ? "font-medium" : "")}>{tag}</span>
+                  <div className="inline-flex flex-nowrap ml-0.5 gap-0.5 ">
+                    <span className={cn("whitespace-nowrap", isActive ? "font-medium" : "")}>{tag}</span>
                     {amount > 1 && <span className="opacity-60 shrink-0">({amount})</span>}
                   </div>
                 </div>
@@ -98,3 +98,4 @@ const TagsSection = (props: Props) => {
 };
 
 export default TagsSection;
+

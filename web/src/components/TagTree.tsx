@@ -119,13 +119,13 @@ const TagItemContainer = (props: TagItemContainerProps) => {
     <>
       <div className="relative flex flex-row justify-between items-center w-full leading-6 py-0 mt-px text-sm select-none shrink-0">
         <div
-          className={`flex flex-row justify-start items-center truncate shrink leading-5 mr-1 cursor-pointer transition-colors ${
+          className={`flex flex-row justify-start items-center whitespace-nowrap shrink leading-5 mr-1 cursor-pointer transition-colors ${
             isActive ? "text-primary" : "text-muted-foreground"
           }`}
           onClick={handleTagClick}
         >
           <HashIcon className="w-4 h-auto shrink-0 mr-1" />
-          <span className={`truncate hover:opacity-80 ${isActive ? "font-medium" : ""}`}>
+          <span className={`whitespace-nowrap hover:opacity-80 ${isActive ? "font-medium" : ""}`}>
             {tag.key} {tag.amount > 1 && <span className="opacity-60">({tag.amount})</span>}
           </span>
         </div>
@@ -158,3 +158,4 @@ const TagItemContainer = (props: TagItemContainerProps) => {
 };
 
 export default TagTree;
+
