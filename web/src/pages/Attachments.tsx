@@ -59,7 +59,7 @@ interface AttachmentItemProps {
 
 type AttachmentScope = "workspace" | "mine";
 
-const isAttachmentUnavailable = async (attachment: Attachment): Promise<boolean> => {
+const _isAttachmentUnavailable = async (attachment: Attachment): Promise<boolean> => {
   if (attachment.externalLink) {
     return false;
   }

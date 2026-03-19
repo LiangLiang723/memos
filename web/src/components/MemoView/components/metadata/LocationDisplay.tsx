@@ -18,7 +18,7 @@ const LocationDisplay = ({ location, className }: LocationDisplayProps) => {
     return null;
   }
 
-  const displayText = location.placeholder || `Position: [${location.latitude}, ${location.longitude}]`;
+  const displayText = location.placeholder || `Location`;
 
   return (
     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
@@ -33,9 +33,6 @@ const LocationDisplay = ({ location, className }: LocationDisplayProps) => {
         >
           <span className="shrink-0 text-muted-foreground">
             <MapPinIcon className="w-3.5 h-3.5" />
-          </span>
-          <span className="text-nowrap opacity-80">
-            [{location.latitude.toFixed(2)}°, {location.longitude.toFixed(2)}°]
           </span>
           <span className="text-nowrap truncate">{displayText}</span>
         </div>
