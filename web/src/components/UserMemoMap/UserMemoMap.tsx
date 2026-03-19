@@ -138,13 +138,13 @@ const UserMemoMap = ({ creator, filter, className }: Props) => {
   const remainingSelectedMemoCount = Math.max(selectedMemos.length - visibleMemoCount, 0);
 
   return (
-    <div className={cn("relative z-0 w-full h-full min-h-0 flex flex-col gap-3 overflow-hidden", className)}>
-      <div
-        className={cn(
-          "relative w-full rounded-xl overflow-hidden border border-border shadow-sm transition-all duration-300 shrink-0",
-          hasSelectedMemos ? "h-[42%] min-h-[240px]" : "min-h-[260px] flex-1",
-        )}
-      >
+      <div className={cn("relative z-0 w-full h-full min-h-0 overflow-hidden", className)}>
+        <div
+          className={cn(
+            "absolute top-0 left-0 w-full rounded-xl overflow-hidden border border-border shadow-sm transition-all duration-300 ease-in-out z-0",
+            hasSelectedMemos ? "h-[42%]" : "h-full",
+          )}
+        >
         {memosWithLocation.length === 0 && (
           <div className="absolute inset-0 z-[1000] flex items-center justify-center pointer-events-none">
             <div className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-background/70 px-4 py-2 shadow-sm backdrop-blur-sm">
@@ -192,50 +192,57 @@ const UserMemoMap = ({ creator, filter, className }: Props) => {
         </MapContainer>
       </div>
 
-      {hasSelectedMemos && (
-        <div
+      <div
           ref={listScrollRef}
           className={cn(
-            "rounded-xl border border-border bg-background p-3 shadow-sm transition-all duration-300 ease-out flex-1 min-h-0 overflow-y-auto",
+            "absolute bottom-0 left-0 w-full rounded-xl border bg-background shadow-sm transition-all duration-300 ease-in-out overflow-y-auto whitespace-nowrap z-10",
+            hasSelectedMemos
+              ? "h-[calc(58%-0.75rem)] p-3 border-border opacity-100 translate-y-0"
+              : "h-0 p-0 border-transparent opacity-0 translate-y-4 pointer-events-none",
             animateCard && "animate-in slide-in-from-bottom-2 fade-in-0",
           )}
         >
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <div className="text-xs text-muted-foreground">
-              已显示 {visibleSelectedMemos.length} / {selectedMemos.length} 条
+        {hasSelectedMemos && (
+          <>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="text-xs text-muted-foreground">
+              ??? {visibleSelectedMemos.length} / {selectedMemos.length} ?
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedMemoNames([])}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent"
+                  aria-label="Close selected memo"
+                  title="Close"
+                >
+                  <XIcon className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedMemoNames([])}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent"
-                aria-label="Close selected memo"
-                title="Close"
-              >
-                <XIcon className="h-4 w-4" />
-              </button>
+            <div className="space-y-3">
+              {visibleSelectedMemos.map((memo) => (
+                <MemoView key={`${memo.name}-${memo.displayTime}`} memo={memo} parentPage="/map" compact={false} className="mb-0 whitespace-normal" />
+              ))}
             </div>
-          </div>
-          <div className="space-y-3">
-            {visibleSelectedMemos.map((memo) => (
-              <MemoView key={`${memo.name}-${memo.displayTime}`} memo={memo} parentPage="/map" compact={false} className="mb-0" />
-            ))}
-          </div>
-          {hasMoreSelectedMemos && (
-            <div className="mt-3 flex justify-center">
-              <button
-                type="button"
-                className="inline-flex items-center rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-accent"
-                onClick={() => setVisibleMemoCount((previousCount) => previousCount + LOAD_MORE_MEMO_STEP)}
-              >
-                加载更多（剩余 {remainingSelectedMemoCount} 条）
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+            {hasMoreSelectedMemos && (
+              <div className="mt-3 flex justify-center whitespace-normal">
+                <button
+                  type="button"
+                  className="inline-flex items-center rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-accent"
+                  onClick={() => setVisibleMemoCount((previousCount) => previousCount + LOAD_MORE_MEMO_STEP)}
+                >
+                ??????? {remainingSelectedMemoCount} ??
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };
 
 export default UserMemoMap;
+
+

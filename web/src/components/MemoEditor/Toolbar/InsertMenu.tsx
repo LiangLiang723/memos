@@ -455,7 +455,7 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
         {props.compact ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="px-2" title={t("common.collapse")} aria-label={t("common.collapse")}>
+                <Button variant="outline" size="sm" className="px-2 shadow-sm hover:shadow-md transition-all duration-200" title={t("common.collapse")} aria-label={t("common.collapse")}>
                 <MoreHorizontal className="size-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -500,23 +500,23 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
               onClick={() => handleUploadClick()}
               disabled={isUploading}
               title={t("common.upload")}
-              className="px-2"
+              className="px-2 shadow-sm hover:shadow-md transition-all duration-200"
             >
               {isUploading ? <LoaderIcon className="size-4 animate-spin" /> : <FileIcon className="size-4" />}
             </Button>
 
             {/* Link memo button */}
-            <Button variant="outline" size="sm" onClick={handleOpenLinkDialog} title={t("tooltip.link-memo")} className="px-2">
+            <Button variant="outline" size="sm" onClick={handleOpenLinkDialog} title={t("tooltip.link-memo")} className="px-2 shadow-sm hover:shadow-md transition-all duration-200">
               <LinkIcon className="size-4" />
             </Button>
 
             {/* Location button */}
-            <Button variant="outline" size="sm" onClick={handleLocationClick} title={t("tooltip.select-location")} className="px-2">
+            <Button variant="outline" size="sm" onClick={handleLocationClick} title={t("tooltip.select-location")} className="px-2 shadow-sm hover:shadow-md transition-all duration-200">
               <MapPinIcon className="size-4" />
             </Button>
 
             {/* Focus mode button */}
-            <Button variant="outline" size="sm" onClick={handleToggleFocusMode} title={t("editor.focus-mode")} className="px-2">
+            <Button variant="outline" size="sm" onClick={handleToggleFocusMode} title={t("editor.focus-mode")} className="px-2 shadow-sm hover:shadow-md transition-all duration-200">
               <Maximize2Icon className="size-4" />
             </Button>
           </>
@@ -566,3 +566,4 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
 };
 
 export default InsertMenu;
+

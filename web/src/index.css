@@ -71,6 +71,29 @@
   }
 }
 
+@layer utilities {
+  .shadow-primary-3d {
+    box-shadow: 2px 4px 8px 0px color-mix(in srgb, var(--primary) 15%, transparent),
+                1px 2px 4px 0px color-mix(in srgb, var(--primary) 10%, transparent) !important;
+    transition: all 0.2s ease-in-out !important;
+  }
+  .shadow-primary-3d:hover {
+    box-shadow: 2px 6px 12px 0px color-mix(in srgb, var(--primary) 20%, transparent),
+                1px 3px 6px 0px color-mix(in srgb, var(--primary) 15%, transparent) !important;
+    transform: translateY(-0.5px) !important;
+  }
+
+  html[data-theme="default-dark"] .shadow-primary-3d {
+    box-shadow: 2px 4px 8px 0px color-mix(in srgb, var(--primary) 30%, transparent),
+                1px 2px 4px 0px color-mix(in srgb, var(--primary) 20%, transparent) !important;
+  }
+  html[data-theme="default-dark"] .shadow-primary-3d:hover {
+    box-shadow: 2px 6px 12px 0px color-mix(in srgb, var(--primary) 40%, transparent),
+                1px 3px 6px 0px color-mix(in srgb, var(--primary) 25%, transparent) !important;
+  }
+}
+
+
 @layer components {
   /* Custom Animations */
   @keyframes fade {
@@ -161,45 +184,24 @@
   }
 
   /* Scrollbar Styling */
-  /* Light mode scrollbar */
-  @media (prefers-color-scheme: light) {
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: #f5f5f5;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: #cccccc;
-      border-radius: 4px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: #999999;
-    }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
   }
 
-  /* Dark mode scrollbar */
-  @media (prefers-color-scheme: dark) {
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
 
-    ::-webkit-scrollbar-track {
-      background: #333333;
-    }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+  }
 
-    ::-webkit-scrollbar-thumb {
-      background: #555555;
-      border-radius: 4px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: #777777;
-    }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
   }
 }
+
+
+
