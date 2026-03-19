@@ -14,8 +14,8 @@ export const INTENSITY_THRESHOLDS = {
 } as const;
 
 export const CELL_STYLES = {
-  HIGH: "bg-primary text-primary-foreground shadow-sm border-transparent",
-  MEDIUM: "bg-primary/85 text-primary-foreground shadow-sm border-transparent",
+  HIGH: "bg-primary text-primary-foreground shadow-primary-3d border-transparent",
+  MEDIUM: "bg-primary/85 text-primary-foreground shadow-primary-3d border-transparent",
   LOW: "bg-primary/70 text-primary-foreground border-transparent",
   MINIMAL: "bg-primary/50 text-foreground border-transparent",
   EMPTY: "bg-muted/20 text-muted-foreground hover:bg-muted/30 border-border/10",
@@ -33,3 +33,4 @@ export const DEFAULT_CELL_SIZE = {
   borderRadius: "rounded-lg",
   gap: "gap-2",
 } as const;
+

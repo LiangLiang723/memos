@@ -114,7 +114,7 @@ export const EditorToolbar: FC<EditorToolbarProps> = ({ onSave, onCancel, memoNa
           onClick={onSave}
           disabled={!valid || isSaving}
           title={isSaving ? t("editor.saving") : t("editor.save")}
-          className="w-[43px] h-[25px] p-0 flex items-center justify-center"
+          className="w-[43px] h-[25px] p-0 flex items-center justify-center shadow-primary-3d border border-primary/20"
         >
           {isSaving ? (
             <LoaderIcon className="w-4 h-4 animate-spin" />
@@ -139,3 +139,8 @@ export const EditorToolbar: FC<EditorToolbarProps> = ({ onSave, onCancel, memoNa
     </div>
   );
 };
+
+
+
+
+

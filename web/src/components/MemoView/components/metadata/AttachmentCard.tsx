@@ -19,7 +19,7 @@ const AttachmentCard = ({ attachment, onClick, className }: AttachmentCardProps)
       <img
         src={thumbnailUrl}
         alt={attachment.filename}
-        className={cn("w-full h-full object-cover rounded-lg cursor-pointer", className)}
+        className={cn("w-full h-full object-cover rounded-lg cursor-pointer shadow-sm", className)}
         onClick={onClick}
         loading="lazy"
         onError={(e) => {
@@ -34,7 +34,7 @@ const AttachmentCard = ({ attachment, onClick, className }: AttachmentCardProps)
 
   if (attachmentType === "video/*") {
     return (
-      <div className={cn("relative w-full h-full rounded-lg overflow-hidden", className)} onClick={onClick}>
+      <div className={cn("relative w-full h-full rounded-lg overflow-hidden shadow-sm cursor-pointer", className)} onClick={onClick}>
         <video
           src={sourceUrl + "#t=0.1"}
           className="w-full h-full object-cover"
@@ -53,7 +53,7 @@ const AttachmentCard = ({ attachment, onClick, className }: AttachmentCardProps)
   }
 
   if (attachmentType === "audio/*") {
-    return <audio src={sourceUrl} className={cn("w-full rounded-lg", className)} controls preload="metadata" />;
+    return <audio src={sourceUrl} className={cn("w-full rounded-lg shadow-sm", className)} controls preload="metadata" />;
   }
 
   return null;

@@ -90,7 +90,7 @@ const VisualItem = ({ attachment, onVisualClick }: VisualItemProps) => {
 
   return (
     <div
-      className="aspect-square rounded-lg overflow-hidden bg-muted/40 border border-border hover:border-accent/50 transition-all cursor-pointer"
+      className="aspect-square rounded-lg overflow-hidden bg-muted/40 border border-border hover:border-accent/50 shadow-sm transition-all cursor-pointer"
       onClick={handleClick}
     >
       <AttachmentCard attachment={attachment} className="rounded-none" />
@@ -196,7 +196,7 @@ const AttachmentList = ({ attachments }: AttachmentListProps) => {
         </div>
       )}
 
-      <div className="w-full rounded-lg border border-border bg-muted/20 overflow-hidden">
+      <div className="w-full rounded-lg border border-border bg-muted/20 overflow-hidden shadow-sm">
         <SectionHeader icon={PaperclipIcon} title={t("common.attachments")} count={nonVisualAttachmentCount} />
 
         <div className="p-1.5 flex flex-col gap-1">
