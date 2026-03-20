@@ -55,10 +55,14 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
   const [locationCopied, setLocationCopied] = useState(false);
   const [imageDisplayMode, setImageDisplayMode] = useState<"static" | "motion-video">("static");
   const [livePhoto, setLivePhoto] = useState<LivePhotoDetection>({ loading: false, canPlay: false });
+  const [isDragging, setIsDragging] = useState(false);
+  const [swipeOffset, setSwipeOffset] = useState(0);
   const isPanningRef = useRef(false);
   const lastPanRef = useRef({ x: 0, y: 0 });
   const initialPinchDistanceRef = useRef<number | null>(null);
   const initialScaleRef = useRef(1);
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const swipeEdgeRef = useRef<"left" | "right" | "both" | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -342,11 +346,11 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
     }
   };
 
-  const clampTranslate = (nextScale: number, nextTranslate: { x: number; y: number }) => {
+  const getMaxOffset = (nextScale: number) => {
     const frame = frameRef.current;
     const image = imgRef.current;
     if (!frame || !image || !image.naturalWidth || !image.naturalHeight) {
-      return nextTranslate;
+      return { x: 0, y: 0 };
     }
 
     const frameWidth = frame.clientWidth;
@@ -357,20 +361,19 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
     const baseWidth = imageAspect > frameAspect ? frameWidth : frameHeight * imageAspect;
     const baseHeight = imageAspect > frameAspect ? frameWidth / imageAspect : frameHeight;
 
-    const maxOffsetX = Math.max(0, (baseWidth * nextScale - frameWidth) / 2);
-    const maxOffsetY = Math.max(0, (baseHeight * nextScale - frameHeight) / 2);
-
     return {
-      x: Math.min(maxOffsetX, Math.max(-maxOffsetX, nextTranslate.x)),
-      y: Math.min(maxOffsetY, Math.max(-maxOffsetY, nextTranslate.y)),
+      x: Math.max(0, (baseWidth * nextScale - frameWidth) / 2),
+      y: Math.max(0, (baseHeight * nextScale - frameHeight) / 2),
     };
   };
 
-  const currentImageSrc = useMemo(() => {
-    if (!currentMedia || currentMedia.type !== "image") return "";
-    if (imageDisplayMode === "motion-video") return currentMedia.url;
-    return currentMedia.thumbnailUrl || currentMedia.url;
-  }, [currentMedia, imageDisplayMode]);
+  const clampTranslate = (nextScale: number, nextTranslate: { x: number; y: number }) => {
+    const maxOffset = getMaxOffset(nextScale);
+    return {
+      x: Math.min(maxOffset.x, Math.max(-maxOffset.x, nextTranslate.x)),
+      y: Math.min(maxOffset.y, Math.max(-maxOffset.y, nextTranslate.y)),
+    };
+  };
 
   useEffect(() => {
     setCurrentIndex(initialIndex);
@@ -535,9 +538,51 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
   };
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) {
-      handleClose();
+    const target = event.target as HTMLElement;
+
+    if (target.closest("button")) {
+      return;
     }
+
+    if (target.tagName === "IMG" || target.tagName === "VIDEO") {
+      const frame = frameRef.current;
+      const media = target as HTMLImageElement | HTMLVideoElement;
+
+      // Extract natural dimensions depending on the element type
+      const naturalWidth =
+        target.tagName === "IMG" ? (media as HTMLImageElement).naturalWidth : (media as HTMLVideoElement).videoWidth;
+      const naturalHeight =
+        target.tagName === "IMG" ? (media as HTMLImageElement).naturalHeight : (media as HTMLVideoElement).videoHeight;
+
+      if (frame && naturalWidth && naturalHeight) {
+        const frameRect = frame.getBoundingClientRect();
+        const frameWidth = frameRect.width;
+        const frameHeight = frameRect.height;
+
+        const mediaAspect = naturalWidth / naturalHeight;
+        const frameAspect = frameWidth / frameHeight;
+
+        let baseWidth = mediaAspect > frameAspect ? frameWidth : frameHeight * mediaAspect;
+        let baseHeight = mediaAspect > frameAspect ? frameWidth / mediaAspect : frameHeight;
+
+        baseWidth *= scale;
+        baseHeight *= scale;
+
+        const centerX = frameRect.left + frameWidth / 2 + translate.x;
+        const centerY = frameRect.top + frameHeight / 2 + translate.y;
+
+        const left = centerX - baseWidth / 2;
+        const right = centerX + baseWidth / 2;
+        const top = centerY - baseHeight / 2;
+        const bottom = centerY + baseHeight / 2;
+
+        if (event.clientX >= left && event.clientX <= right && event.clientY >= top && event.clientY <= bottom) {
+          return; // Click is within the exact rendered image
+        }
+      }
+    }
+
+    handleClose();
   };
 
   const handleCopyLocation = async () => {
@@ -614,7 +659,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
+                  className="hidden sm:inline-flex rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
                   aria-label="上一张"
                   onClick={() => setCurrentIndex((prev) => Math.max(prev - 1, 0))}
                   disabled={safeIndex === 0}
@@ -624,7 +669,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
+                  className="hidden sm:inline-flex rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
                   aria-label="下一张"
                   onClick={() => setCurrentIndex((prev) => Math.min(prev + 1, resolvedMediaItems.length - 1))}
                   disabled={safeIndex === resolvedMediaItems.length - 1}
@@ -716,7 +761,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
         >
           <div
             ref={frameRef}
-            className="relative w-full h-full max-w-[1200px] max-h-full border border-transparent bg-background/10 rounded-lg overflow-hidden"
+            className="relative w-full h-full max-w-[1200px] max-h-full border border-transparent bg-transparent rounded-lg overflow-hidden"
             style={{
               touchAction: "none",
               maxWidth: "100%",
@@ -746,7 +791,19 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
                 initialScaleRef.current = scale;
               } else if (e.touches.length === 1) {
                 isPanningRef.current = true;
-                lastPanRef.current = { x: e.touches[0].clientX - translate.x, y: e.touches[0].clientY - translate.y };
+                setIsDragging(true);
+                const t = e.touches[0];
+                lastPanRef.current = { x: t.clientX - translate.x, y: t.clientY - translate.y };
+                touchStartRef.current = { x: t.clientX, y: t.clientY, time: Date.now() };
+
+                if (scale === 1) {
+                  swipeEdgeRef.current = "both";
+                } else {
+                  const maxOffset = getMaxOffset(scale);
+                  if (translate.x >= maxOffset.x - 0.5) swipeEdgeRef.current = "left";
+                  else if (translate.x <= -maxOffset.x + 0.5) swipeEdgeRef.current = "right";
+                  else swipeEdgeRef.current = null;
+                }
               }
             }}
             onTouchMove={(e) => {
@@ -760,15 +817,38 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
                 setScale(newScale);
                 setTranslate((prev) => clampTranslate(newScale, prev));
                 e.preventDefault();
-              } else if (e.touches.length === 1 && isPanningRef.current && scale > 1) {
+              } else if (e.touches.length === 1 && isPanningRef.current) {
                 const t = e.touches[0];
-                setTranslate(
-                  clampTranslate(scale, {
-                    x: t.clientX - lastPanRef.current.x,
-                    y: t.clientY - lastPanRef.current.y,
-                  }),
-                );
-                e.preventDefault();
+                const dx = touchStartRef.current ? t.clientX - touchStartRef.current.x : 0;
+                const dy = touchStartRef.current ? t.clientY - touchStartRef.current.y : 0;
+                
+                if (scale > 1) {
+                  if ((swipeEdgeRef.current === "left" && dx > 0 && Math.abs(dx) > Math.abs(dy)) || 
+                      (swipeEdgeRef.current === "right" && dx < 0 && Math.abs(dx) > Math.abs(dy))) {
+                    let sOffset = dx;
+                    const cWidth = frameRef.current?.clientWidth || window.innerWidth;
+                    if (sOffset > cWidth + 11) sOffset = cWidth + 11;
+                    if (sOffset < -(cWidth + 11)) sOffset = -(cWidth + 11);
+                    setSwipeOffset(sOffset);
+                    e.preventDefault();
+                  } else {
+                    setTranslate(
+                      clampTranslate(scale, {
+                        x: t.clientX - lastPanRef.current.x,
+                        y: t.clientY - lastPanRef.current.y,
+                      }),
+                    );
+                    e.preventDefault();
+                  }
+                } else if (Math.abs(dx) > Math.abs(dy)) {
+                  // Prevent browser back/forward swipe gestures when swiping horizontally at scale 1
+                  let sOffset = dx;
+                  const cWidth = frameRef.current?.clientWidth || window.innerWidth;
+                  if (sOffset > cWidth + 11) sOffset = cWidth + 11;
+                  if (sOffset < -(cWidth + 11)) sOffset = -(cWidth + 11);
+                  setSwipeOffset(sOffset);
+                  e.preventDefault();
+                }
               }
             }}
             onTouchEnd={(e) => {
@@ -779,64 +859,161 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
               }
 
               if (e.touches.length === 0) {
+                if (touchStartRef.current && e.changedTouches.length > 0) {
+                  const t = e.changedTouches[0];
+                  const dx = t.clientX - touchStartRef.current.x;
+                  const dy = t.clientY - touchStartRef.current.y;
+                  const dt = Date.now() - touchStartRef.current.time;
+
+                  const threshold = Math.min(window.innerWidth / 4, 150);
+                  const isQuickSwipe = Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) && dt < 400;
+                  const isLongSwipe = Math.abs(dx) > threshold;
+                  const containerWidth = frameRef.current?.clientWidth || window.innerWidth;
+                  const GAP = 11;
+                  
+                  // Clamp dx so it doesn't overshoot into next-next image bounds
+                  let clampedDx = dx;
+                  if (clampedDx > containerWidth + GAP) clampedDx = containerWidth + GAP;
+                  if (clampedDx < -(containerWidth + GAP)) clampedDx = -(containerWidth + GAP);
+
+                  if (isQuickSwipe || isLongSwipe) {
+                    if (dx > 0 && (swipeEdgeRef.current === "left" || swipeEdgeRef.current === "both")) {
+                      if (safeIndex > 0) {
+                        setIsDragging(true);
+                        setCurrentIndex((prev) => Math.max(prev - 1, 0));
+                        setScale(1);
+                        setTranslate({ x: 0, y: 0 });
+                        setSwipeOffset(clampedDx - (containerWidth + GAP));
+                        
+                        setTimeout(() => {
+                           setIsDragging(false);
+                           setSwipeOffset(0);
+                        }, 50);
+                      } else {
+                         setIsDragging(false);
+                         setSwipeOffset(0);
+                      }
+                    } else if (dx < 0 && (swipeEdgeRef.current === "right" || swipeEdgeRef.current === "both")) {
+                      if (safeIndex < resolvedMediaItems.length - 1) {
+                        setIsDragging(true);
+                        setCurrentIndex((prev) => Math.min(prev + 1, resolvedMediaItems.length - 1));
+                        setScale(1);
+                        setTranslate({ x: 0, y: 0 });
+                        setSwipeOffset(clampedDx + (containerWidth + GAP));
+                        
+                        setTimeout(() => {
+                           setIsDragging(false);
+                           setSwipeOffset(0);
+                        }, 50);
+                      } else {
+                         setIsDragging(false);
+                         setSwipeOffset(0);
+                      }
+                    } else {
+                        setIsDragging(false);
+                        setSwipeOffset(0);
+                    }
+                  } else {
+                    setIsDragging(false);
+                    setSwipeOffset(0);
+                  }
+                } else {
+                  setIsDragging(false);
+                  setSwipeOffset(0);
+                }
+
                 isPanningRef.current = false;
+                touchStartRef.current = null;
+                swipeEdgeRef.current = null;
               }
             }}
           >
+            {/* Gallery Track for Swiping */}
             <div
-              className="w-full h-full flex items-center justify-center"
-              style={
-                isCurrentVideo
-                  ? undefined
-                  : {
-                      transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
-                      transition: "transform 0s",
-                      transformOrigin: "center center",
-                    }
-              }
+              className={`w-full h-full flex items-center justify-center`}
+              style={{
+                transform: `translateX(${swipeOffset}px)`,
+                transition: isDragging ? "none" : "transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)"
+              }}
             >
-              {isCurrentVideo ? (
-                <video
-                  src={currentMedia?.url ? currentMedia.url + "#t=0.1" : undefined}
-                  controls
-                  className="block w-full h-full object-contain"
-                  preload="metadata"
-                  playsInline
-                  x5-video-player-type="h5"
-                />
-              ) : imageDisplayMode === "motion-video" && livePhoto.motionVideoUrl ? (
-                <video
-                  src={livePhoto.motionVideoUrl}
-                  autoPlay
-                  muted
-                  playsInline
-                  className="block w-full h-full object-contain"
-                  onEnded={() => setImageDisplayMode("static")}
-                />
-              ) : (
-                <img
-                  ref={imgRef}
-                  src={currentImageSrc}
-                  alt={`Preview image ${safeIndex + 1} of ${resolvedMediaItems.length}`}
-                  className="block w-full h-full object-contain select-none"
-                  draggable={false}
-                  loading="eager"
-                  decoding="async"
-                  onLoad={() => {
-                    setTranslate((prev) => clampTranslate(scale, prev));
-                  }}
-                  onError={(event) => {
-                    const target = event.target as HTMLImageElement;
-                    if (target.src.includes("?thumbnail=true")) {
-                      target.src = currentMedia?.url || target.src;
+              {resolvedMediaItems.map((media, i) => {
+                if (Math.abs(i - safeIndex) > 1) return null; // Render only +/- 1
+                  if (i === safeIndex - 1 && swipeOffset < 0) return null;
+                  if (i === safeIndex + 1 && swipeOffset > 0) return null;
+
+                  const isCurrent = i === safeIndex;
+                let hOffset = "0px";
+                if (i < safeIndex) hOffset = `calc(-100% - 11px)`;
+                if (i > safeIndex) hOffset = `calc(100% + 11px)`;
+
+                return (
+                  <div
+                    key={media.url}
+                    className="absolute top-0 bottom-0 w-full h-full flex items-center justify-center pointer-events-none"
+                    style={
+                      isCurrent
+                        ? {
+                            left: hOffset,
+                            transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+                            transformOrigin: "center center",
+                            transition: isDragging ? "transform 0s" : "transform 0.3s ease-out",
+                            pointerEvents: "auto"
+                          }
+                        : {
+                            left: hOffset,
+                            pointerEvents: "none"
+                          }
                     }
-                  }}
-                />
-              )}
+                  >
+                    {media.type.startsWith("video/") ? (
+                      isCurrent ? (
+                        imageDisplayMode === "motion-video" && livePhoto.motionVideoUrl ? (
+                          <video
+                            src={livePhoto.motionVideoUrl}
+                            autoPlay
+                            muted
+                            playsInline
+                            className="block w-full h-full object-contain"
+                            onEnded={() => setImageDisplayMode("static")}
+                          />
+                        ) : (
+                          <video
+                            src={media.url ? media.url + "#t=0.1" : undefined}
+                            controls
+                            className="block w-full h-full object-contain"
+                            preload="metadata"
+                            playsInline
+                            x5-video-player-type="h5"
+                          />
+                        )
+                      ) : null // don't render side videos to save memory
+                    ) : (
+                      <img
+                        ref={isCurrent ? imgRef : undefined}
+                        src={media.type.startsWith("image") ? (isCurrent && imageDisplayMode === "motion-video" ? media.url : (media.thumbnailUrl || media.url)) : media.url}
+                        alt={`Preview image ${i + 1}`}
+                        className="block w-full h-full object-contain select-none"
+                        draggable={false}
+                        loading="eager"
+                        decoding="async"
+                        onLoad={() => {
+                          if (isCurrent) setTranslate((prev) => clampTranslate(scale, prev));
+                        }}
+                        onError={(event) => {
+                          const target = event.target as HTMLImageElement;
+                          if (target.src.includes("?thumbnail=true")) {
+                            target.src = media.url || target.src;
+                          }
+                        }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
-
+        
         <div id="image-preview-description" className="sr-only">
           媒体预览对话框。按 Escape 关闭，或点击媒体外区域关闭。
         </div>
