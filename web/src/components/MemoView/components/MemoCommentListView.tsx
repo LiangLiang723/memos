@@ -42,7 +42,7 @@ const SubCommentItem = ({ comment }: { comment: Memo }) => {
       className="flex gap-2 w-full cursor-pointer group bg-muted/30 border border-border/50 rounded-lg p-2 shadow-sm transition-all hover:shadow-md"
       onClick={(e) => {
         e.stopPropagation();
-        navigate(`${comment.name}`);
+        navigate(`/${comment.name}`);
       }}
     >
       <UserAvatar className="w-5 h-5 rounded-md shrink-0 mt-0.5" avatarUrl={creator?.avatarUrl} />

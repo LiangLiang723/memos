@@ -9,6 +9,7 @@ import { handleError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
 import { convertVisibilityFromString } from "@/utils/memo";
+import { MemoRelation_Type } from "@/types/proto/api/v1/memo_service_pb";
 import { EditorContent, EditorMetadata, EditorToolbar, FocusModeExitButton, FocusModeOverlay, TimestampPopover } from "./components";
 import { FOCUS_MODE_STYLES } from "./constants";
 import type { EditorRefActions } from "./Editor";
@@ -93,8 +94,17 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
       }
 
       // If this was a comment, also invalidate the comments query for the parent memo
-      if (parentMemoName) {
-        invalidationPromises.push(queryClient.invalidateQueries({ queryKey: memoKeys.comments(parentMemoName) }));
+      let activeParentMemoName = parentMemoName;
+      if (!activeParentMemoName && memo?.relations?.length) {
+        const commentRelation = memo.relations.find(
+          (r) => r.type === MemoRelation_Type.COMMENT && r.memo?.name === memo.name,
+        );
+        if (commentRelation?.relatedMemo?.name) {
+          activeParentMemoName = commentRelation.relatedMemo.name;
+        }
+      }
+      if (activeParentMemoName) {
+        invalidationPromises.push(queryClient.invalidateQueries({ queryKey: memoKeys.comments(activeParentMemoName) }));
       }
 
       await Promise.all(invalidationPromises);
