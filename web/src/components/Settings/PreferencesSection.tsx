@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { create } from "@bufbuild/protobuf";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,7 +16,6 @@ import SettingSection from "./SettingSection";
 import WebhookSection from "./WebhookSection";
 
 const PreferencesSection = () => {
-  const [commentDefault, setCommentDefault] = useState(localStorage.getItem("memos_comment_default_expanded") === "true" ? "EXPANDED" : "COLLAPSED");
   const t = useTranslate();
   const { currentUser, userGeneralSetting: generalSetting, refetchSettings } = useAuth();
   const { mutate: updateUserGeneralSetting } = useUpdateUserGeneralSetting(currentUser?.name);
@@ -68,7 +66,19 @@ const PreferencesSection = () => {
       locale: "en",
       memoVisibility: "PRIVATE",
       theme: "system",
+      commentDefaultVisibility: "COLLAPSED",
     });
+
+  const handleCommentDefaultVisibilityChange = (value: string) => {
+    updateUserGeneralSetting(
+      { generalSetting: { commentDefaultVisibility: value }, updateMask: ["comment_default_visibility"] },
+      {
+        onSuccess: () => {
+          refetchSettings();
+        },
+      },
+    );
+  };
 
   return (
     <SettingSection>
@@ -106,13 +116,7 @@ const PreferencesSection = () => {
 
       <SettingGroup title="显示与排版" showSeparator>
         <SettingRow label="评论区默认状态" description="进入主页时评论区的默认折叠/展开状态。">
-          <Select 
-            value={commentDefault}
-            onValueChange={(val) => {
-              setCommentDefault(val);
-              localStorage.setItem("memos_comment_default_expanded", val === "EXPANDED" ? "true" : "false");
-            }}
-          >
+          <Select value={setting.commentDefaultVisibility || "COLLAPSED"} onValueChange={handleCommentDefaultVisibilityChange}>
             <SelectTrigger className="min-w-fit">
               <SelectValue />
             </SelectTrigger>
