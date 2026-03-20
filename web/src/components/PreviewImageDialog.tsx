@@ -230,8 +230,14 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
       profile,
     ].filter(Boolean);
 
-    const directory = formatDetailValue(exifDetails.Directory) || formatDetailValue(exifDetails.Path);
-    const fullPath = directory && fileName ? `${directory}/${fileName}` : directory || fileName;
+    let directory = formatDetailValue(exifDetails.Directory) || formatDetailValue(exifDetails.Path);
+    if (directory) {
+      const trimmed = directory.trim();
+      if (trimmed.startsWith("{") || trimmed.startsWith("[") || /parseType/i.test(trimmed)) {
+        directory = "";
+      }
+    }
+    const fullPath = directory ? `${directory}/${fileName}` : fileName;
 
     const locationName = [
       formatDetailValue(exifDetails.Location),
