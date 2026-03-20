@@ -53,17 +53,19 @@ const Explore = () => {
             </button>
           </DialogTrigger>
           <DialogPortal>
-            <DialogOverlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+            <DialogOverlay className="duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
             <DialogPrimitive.Content
-              className="fixed inset-0 z-50 flex items-start sm:items-center justify-center pt-20 sm:pt-0 bg-transparent outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-top-[2%] data-[state=open]:slide-in-from-top-[2%]"
+              className="fixed inset-0 z-50 flex items-start sm:items-center justify-center pt-20 sm:pt-0 bg-transparent outline-none duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-top-[2%] data-[state=open]:slide-in-from-top-[2%]"
               onClick={(e) => {
                 if (e.target === e.currentTarget) {
-                  if (document.activeElement instanceof HTMLElement) {
-                    document.activeElement.blur();
+                  const activeElement = document.activeElement;
+                  if (activeElement instanceof HTMLElement) {
+                    activeElement.blur();
                   }
+                  // Wait for the virtual keyboard to begin retracting or the blur to process
                   setTimeout(() => {
                     setEditorOpen(false);
-                  }, 0);
+                  }, 123);
                 }
               }}
             >
