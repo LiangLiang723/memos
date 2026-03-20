@@ -41,6 +41,8 @@ message GeneralUserSetting {
   // The user's theme preference.
   // This references a CSS file in the web/public/themes/ directory.
   string theme = 3;
+  // The default visibility of the memo comments.
+  string comment_default_visibility = 4;
 }
 
 message RefreshTokensUserSetting {

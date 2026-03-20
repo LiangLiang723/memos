@@ -396,6 +396,8 @@ message UserSetting {
     // This references a CSS file in the web/public/themes/ directory.
     // If not set, the default theme will be used.
     string theme = 4 [(google.api.field_behavior) = OPTIONAL];
+    // The default visibility of the memo comments.
+    string comment_default_visibility = 5 [(google.api.field_behavior) = OPTIONAL];
   }
 
   // User webhooks configuration.

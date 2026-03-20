@@ -139,12 +139,12 @@ const UserMemoMap = ({ creator, filter, className }: Props) => {
 
   return (
       <div className={cn("relative z-0 w-full h-full min-h-0 overflow-hidden", className)}>
-        <div
-          className={cn(
+      <div
+        className={cn(
             "absolute top-0 left-0 w-full rounded-xl overflow-hidden border border-border shadow-sm transition-all duration-300 ease-in-out z-0",
             hasSelectedMemos ? "h-[42%]" : "h-full",
-          )}
-        >
+        )}
+      >
         {memosWithLocation.length === 0 && (
           <div className="absolute inset-0 z-[1000] flex items-center justify-center pointer-events-none">
             <div className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-background/70 px-4 py-2 shadow-sm backdrop-blur-sm">
@@ -192,7 +192,7 @@ const UserMemoMap = ({ creator, filter, className }: Props) => {
         </MapContainer>
       </div>
 
-      <div
+        <div
           ref={listScrollRef}
           className={cn(
             "absolute bottom-0 left-0 w-full rounded-xl border bg-background shadow-sm transition-all duration-300 ease-in-out overflow-y-auto whitespace-nowrap z-10",
@@ -204,40 +204,40 @@ const UserMemoMap = ({ creator, filter, className }: Props) => {
         >
         {hasSelectedMemos && (
           <>
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <div className="text-xs text-muted-foreground">
-              ??? {visibleSelectedMemos.length} / {selectedMemos.length} ?
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedMemoNames([])}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent"
-                  aria-label="Close selected memo"
-                  title="Close"
-                >
-                  <XIcon className="h-4 w-4" />
-                </button>
-              </div>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="text-xs text-muted-foreground">
+              已显示 {visibleSelectedMemos.length} / {selectedMemos.length} 条
             </div>
-            <div className="space-y-3">
-              {visibleSelectedMemos.map((memo) => (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedMemoNames([])}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent"
+                aria-label="Close selected memo"
+                title="Close"
+              >
+                <XIcon className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {visibleSelectedMemos.map((memo) => (
                 <MemoView key={`${memo.name}-${memo.displayTime}`} memo={memo} parentPage="/map" compact={false} className="mb-0 whitespace-normal" />
-              ))}
-            </div>
-            {hasMoreSelectedMemos && (
+            ))}
+          </div>
+          {hasMoreSelectedMemos && (
               <div className="mt-3 flex justify-center whitespace-normal">
-                <button
-                  type="button"
-                  className="inline-flex items-center rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-accent"
-                  onClick={() => setVisibleMemoCount((previousCount) => previousCount + LOAD_MORE_MEMO_STEP)}
-                >
-                ??????? {remainingSelectedMemoCount} ??
-                </button>
-              </div>
-            )}
+              <button
+                type="button"
+                className="inline-flex items-center rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-accent"
+                onClick={() => setVisibleMemoCount((previousCount) => previousCount + LOAD_MORE_MEMO_STEP)}
+              >
+                加载更多（剩余 {remainingSelectedMemoCount} 条）
+              </button>
+            </div>
+          )}
           </>
-        )}
+      )}
       </div>
     </div>
   );

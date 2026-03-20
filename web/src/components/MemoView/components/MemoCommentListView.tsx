@@ -8,6 +8,7 @@ import UserAvatar from "@/components/UserAvatar";
 import { useMemoComments } from "@/hooks/useMemoQueries";
 import { useUser } from "@/hooks/useUserQueries";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import { useMemoViewContext, useMemoViewDerived } from "../MemoViewContext";
@@ -127,9 +128,10 @@ const CommentItem = ({ comment, collapsed }: { comment: Memo; collapsed: boolean
 const MemoCommentListView: React.FC = () => {
   const { memo } = useMemoViewContext();
   const { isInMemoDetailPage, commentAmount } = useMemoViewDerived();
+  const { userGeneralSetting } = useAuth();
   const t = useTranslate();
-  const defaultExpanded = localStorage.getItem("memos_comment_default_expanded");
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded === "true");
+  const defaultExpanded = userGeneralSetting?.commentDefaultVisibility === "EXPANDED";
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const { data } = useMemoComments(memo.name, { enabled: !isInMemoDetailPage && commentAmount > 0 });
   const comments = data?.memos ?? [];
