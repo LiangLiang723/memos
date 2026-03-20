@@ -681,10 +681,6 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
                     <span className="text-muted-foreground">拍摄参数：</span>
                     {readableDetails.shootingParams}
                   </p>
-                  <p className="break-all">
-                    <span className="text-muted-foreground">文件路径：</span>
-                    {readableDetails.filePath}
-                  </p>
                   <p className="break-all flex items-center gap-2">
                     <span>
                       <span className="text-muted-foreground">拍摄地点：</span>

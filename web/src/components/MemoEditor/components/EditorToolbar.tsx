@@ -105,7 +105,7 @@ export const EditorToolbar: FC<EditorToolbarProps> = ({ onSave, onCancel, memoNa
         <VisibilitySelector value={state.metadata.visibility} onChange={handleVisibilityChange} />
 
         {onCancel && (
-          <Button variant="ghost" onClick={onCancel} disabled={isSaving}>
+          <Button variant="ghost" onClick={onCancel} disabled={isSaving} className="w-[43px] h-[25px] p-0 flex items-center justify-center text-sm">
             {t("common.cancel")}
           </Button>
         )}
