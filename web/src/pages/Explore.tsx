@@ -1,5 +1,10 @@
+import { useState } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { PlusIcon } from "lucide-react";
+import MemoEditor from "@/components/MemoEditor";
 import MemoView from "@/components/MemoView/MemoView";
 import PagedMemoList from "@/components/PagedMemoList";
+import { Dialog, DialogPortal, DialogOverlay, DialogTrigger } from "@/components/ui/dialog";
 import { useMemoFilters, useMemoSorting } from "@/hooks";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { State } from "@/types/proto/api/v1/common_pb";
@@ -7,6 +12,7 @@ import { Memo, Visibility } from "@/types/proto/api/v1/memo_service_pb";
 
 const Explore = () => {
   const currentUser = useCurrentUser();
+  const [editorOpen, setEditorOpen] = useState(false);
 
   // Determine visibility filter based on authentication status
   // - Logged-in users: Can see PUBLIC and PROTECTED memos
@@ -28,13 +34,42 @@ const Explore = () => {
   });
 
   return (
-    <PagedMemoList
-      renderer={(memo: Memo) => <MemoView key={`${memo.name}-${memo.updateTime}`} memo={memo} showCreator showVisibility compact />}
-      listSort={listSort}
-      orderBy={orderBy}
-      filter={memoFilter}
-      showCreator
-    />
+    <div className="relative min-h-full w-full">
+      <PagedMemoList
+        renderer={(memo: Memo) => <MemoView key={`${memo.name}-${memo.updateTime}`} memo={memo} showCreator showVisibility compact />}
+        listSort={listSort}
+        orderBy={orderBy}
+        filter={memoFilter}
+        showCreator
+      />
+
+      {currentUser && (
+        <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
+          <DialogTrigger asChild>
+            <button className="fixed bottom-6 right-6 md:bottom-12 md:right-12 z-20 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all outline-none border border-primary-foreground/10">
+              <PlusIcon className="w-8 h-8" strokeWidth={3} />
+            </button>
+          </DialogTrigger>
+          <DialogPortal>
+            <DialogOverlay />
+            <DialogPrimitive.Content
+              className="fixed inset-0 z-50 flex items-start sm:items-center justify-center pt-20 sm:pt-0 bg-transparent data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  setEditorOpen(false);
+                }
+              }}
+            >
+              <div 
+                className="w-full max-w-2xl bg-background rounded-xl shadow-2xl border overflow-hidden mx-4"
+              >
+                <MemoEditor cacheKey="explore-memo-editor" autoFocus onConfirm={() => setEditorOpen(false)} />
+              </div>
+            </DialogPrimitive.Content>
+          </DialogPortal>
+        </Dialog>
+      )}
+    </div>
   );
 };
 
