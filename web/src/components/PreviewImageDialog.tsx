@@ -971,8 +971,8 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
 
                   const isCurrent = i === safeIndex;
                 let hOffset = "0px";
-                if (i < safeIndex) hOffset = `calc(-100% - 11px)`;
-                if (i > safeIndex) hOffset = `calc(100% + 11px)`;
+                if (i < safeIndex) hOffset = `calc(-100% - 13px)`;
+                if (i > safeIndex) hOffset = `calc(100% + 13px)`;
 
                 return (
                   <div
