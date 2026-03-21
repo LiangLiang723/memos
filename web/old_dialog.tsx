@@ -1,7 +1,6 @@
 import * as exifr from "exifr";
 import { LatLng } from "leaflet";
 import { InfoIcon, PlayIcon, X } from "lucide-react";
-import { flushSync } from "react-dom";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { LocationPicker } from "@/components/map";
 import { resolveLocationLabel } from "@/components/map/geocoding";
@@ -79,7 +78,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
 
   const safeIndex = Math.max(0, Math.min(currentIndex, Math.max(0, resolvedMediaItems.length - 1)));
   const currentMedia = resolvedMediaItems[safeIndex];
-  const isCurrentVideo = currentMedia?.type === "video" || (imageDisplayMode === "motion-video" && !!livePhoto.motionVideoUrl);
+  const isCurrentVideo = currentMedia?.type === "video";
 
   const isLikelyLivePhotoMimeType = (mimeType: string | undefined, url: string): boolean => {
     const normalized = (mimeType || "").toLowerCase();
@@ -784,8 +783,8 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
               (e.target as Element).ownerDocument?.addEventListener("mouseup", onMouseUp);
             }}
             onTouchStart={(e) => {
+              if (isCurrentVideo) return;
               if (e.touches.length === 2) {
-                if (isCurrentVideo) return;
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 initialPinchDistanceRef.current = Math.hypot(dx, dy);
@@ -800,7 +799,6 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
                 if (scale === 1) {
                   swipeEdgeRef.current = "both";
                 } else {
-                  if (isCurrentVideo) return;
                   const maxOffset = getMaxOffset(scale);
                   if (translate.x >= maxOffset.x - 0.5) swipeEdgeRef.current = "left";
                   else if (translate.x <= -maxOffset.x + 0.5) swipeEdgeRef.current = "right";
@@ -809,8 +807,8 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
               }
             }}
             onTouchMove={(e) => {
+              if (isCurrentVideo) return;
               if (e.touches.length === 2 && initialPinchDistanceRef.current) {
-                if (isCurrentVideo) return;
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const dist = Math.hypot(dx, dy);
@@ -825,7 +823,6 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
                 const dy = touchStartRef.current ? t.clientY - touchStartRef.current.y : 0;
                 
                 if (scale > 1) {
-                  if (isCurrentVideo) return;
                   if ((swipeEdgeRef.current === "left" && dx > 0 && Math.abs(dx) > Math.abs(dy)) || 
                       (swipeEdgeRef.current === "right" && dx < 0 && Math.abs(dx) > Math.abs(dy))) {
                     let sOffset = dx;
@@ -855,6 +852,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
               }
             }}
             onTouchEnd={(e) => {
+              if (isCurrentVideo) return;
               if (e.touches.length < 2) {
                 initialPinchDistanceRef.current = null;
                 initialScaleRef.current = scale;
@@ -881,38 +879,32 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
                   if (isQuickSwipe || isLongSwipe) {
                     if (dx > 0 && (swipeEdgeRef.current === "left" || swipeEdgeRef.current === "both")) {
                       if (safeIndex > 0) {
-                        flushSync(() => {
-                          setIsDragging(true);
-                          setCurrentIndex((prev) => Math.max(prev - 1, 0));
-                          setScale(1);
-                          setTranslate({ x: 0, y: 0 });
-                          setSwipeOffset(clampedDx - (containerWidth + GAP));
-                        });
-                        frameRef.current?.getBoundingClientRect(); // force layout
-
-                        requestAnimationFrame(() => {
+                        setIsDragging(true);
+                        setCurrentIndex((prev) => Math.max(prev - 1, 0));
+                        setScale(1);
+                        setTranslate({ x: 0, y: 0 });
+                        setSwipeOffset(clampedDx - (containerWidth + GAP));
+                        
+                        setTimeout(() => {
                            setIsDragging(false);
                            setSwipeOffset(0);
-                        });
+                        }, 50);
                       } else {
                          setIsDragging(false);
                          setSwipeOffset(0);
                       }
                     } else if (dx < 0 && (swipeEdgeRef.current === "right" || swipeEdgeRef.current === "both")) {
                       if (safeIndex < resolvedMediaItems.length - 1) {
-                        flushSync(() => {
-                          setIsDragging(true);
-                          setCurrentIndex((prev) => Math.min(prev + 1, resolvedMediaItems.length - 1));
-                          setScale(1);
-                          setTranslate({ x: 0, y: 0 });
-                          setSwipeOffset(clampedDx + (containerWidth + GAP));
-                        });
-                        frameRef.current?.getBoundingClientRect(); // force layout
-
-                        requestAnimationFrame(() => {
+                        setIsDragging(true);
+                        setCurrentIndex((prev) => Math.min(prev + 1, resolvedMediaItems.length - 1));
+                        setScale(1);
+                        setTranslate({ x: 0, y: 0 });
+                        setSwipeOffset(clampedDx + (containerWidth + GAP));
+                        
+                        setTimeout(() => {
                            setIsDragging(false);
                            setSwipeOffset(0);
-                        });
+                        }, 50);
                       } else {
                          setIsDragging(false);
                          setSwipeOffset(0);
@@ -951,8 +943,8 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
 
                   const isCurrent = i === safeIndex;
                 let hOffset = "0px";
-                if (i < safeIndex) hOffset = `calc(-100% - 11px)`;
-                if (i > safeIndex) hOffset = `calc(100% + 11px)`;
+                if (i < safeIndex) hOffset = `calc(-100% - 13px)`;
+                if (i > safeIndex) hOffset = `calc(100% + 13px)`;
 
                 return (
                   <div
@@ -973,61 +965,47 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
                           }
                     }
                   >
-                    {media.type === "video" ? (
-                      <video
-                        ref={(el) => { if (el && !isCurrent) el.pause(); }}
-                        key={`vid-${media.url}`}
-                        src={media.url ? media.url + "#t=0.1" : undefined}
-                        controls={isCurrent}
-                        className="block w-full h-full object-contain"
-                        preload="metadata"
-                        playsInline
-                        x5-video-player-type="h5"
-                      />
+                    {media.type.startsWith("video/") ? (
+                      isCurrent ? (
+                        imageDisplayMode === "motion-video" && livePhoto.motionVideoUrl ? (
+                          <video
+                            src={livePhoto.motionVideoUrl}
+                            autoPlay
+                            muted
+                            playsInline
+                            className="block w-full h-full object-contain"
+                            onEnded={() => setImageDisplayMode("static")}
+                          />
+                        ) : (
+                          <video
+                            src={media.url ? media.url + "#t=0.1" : undefined}
+                            controls
+                            className="block w-full h-full object-contain"
+                            preload="metadata"
+                            playsInline
+                            x5-video-player-type="h5"
+                          />
+                        )
+                      ) : null // don't render side videos to save memory
                     ) : (
-                      <>
-                        <img
-                          ref={isCurrent && imageDisplayMode !== "motion-video" ? imgRef : undefined}
-                          src={media.thumbnailUrl || media.url}
-                          alt={`Preview image ${i + 1}`}
-                          className="block w-full h-full object-contain select-none absolute inset-0"
-                          draggable={false}
-                          loading="eager"
-                          decoding="async"
-                          onLoad={() => {
-                            if (isCurrent) setTranslate((prev) => clampTranslate(scale, prev));
-                          }}
-                          onError={(event) => {
-                            const target = event.target as HTMLImageElement;
-                            if (target.src.includes("?thumbnail=true")) {
-                              target.src = media.url || target.src;
-                            }
-                          }}
-                        />
-                        {isCurrent && imageDisplayMode === "motion-video" && (
-                          livePhoto.motionVideoUrl ? (
-                            <video
-                              ref={(el) => { if (el && !isCurrent) el.pause(); }}
-                              src={livePhoto.motionVideoUrl}
-                              autoPlay
-                              muted
-                              playsInline
-                              className="block w-full h-full object-contain absolute inset-0 z-10"
-                              onEnded={() => setImageDisplayMode("static")}
-                            />
-                          ) : (
-                            <img
-                              ref={imgRef}
-                              src={media.url}
-                              alt={`Preview animated ${i + 1}`}
-                              className="block w-full h-full object-contain select-none absolute inset-0 z-10"
-                              draggable={false}
-                              loading="eager"
-                              decoding="async"
-                            />
-                          )
-                        )}
-                      </>
+                      <img
+                        ref={isCurrent ? imgRef : undefined}
+                        src={media.type.startsWith("image") ? (isCurrent && imageDisplayMode === "motion-video" ? media.url : (media.thumbnailUrl || media.url)) : media.url}
+                        alt={`Preview image ${i + 1}`}
+                        className="block w-full h-full object-contain select-none"
+                        draggable={false}
+                        loading="eager"
+                        decoding="async"
+                        onLoad={() => {
+                          if (isCurrent) setTranslate((prev) => clampTranslate(scale, prev));
+                        }}
+                        onError={(event) => {
+                          const target = event.target as HTMLImageElement;
+                          if (target.src.includes("?thumbnail=true")) {
+                            target.src = media.url || target.src;
+                          }
+                        }}
+                      />
                     )}
                   </div>
                 );
