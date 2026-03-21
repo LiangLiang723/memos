@@ -1,6 +1,6 @@
 import * as exifr from "exifr";
 import { LatLng } from "leaflet";
-import { InfoIcon, PlayIcon, X } from "lucide-react";
+import { InfoIcon, PlayIcon, Volume2, VolumeX, X } from "lucide-react";
 import { flushSync } from "react-dom";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { LocationPicker } from "@/components/map";
@@ -55,6 +55,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
   const [readableDetails, setReadableDetails] = useState<ReadableDetails | null>(null);
   const [locationCopied, setLocationCopied] = useState(false);
   const [imageDisplayMode, setImageDisplayMode] = useState<"static" | "motion-video">("static");
+  const [isLivePhotoMuted, setIsLivePhotoMuted] = useState(false);
   const [livePhoto, setLivePhoto] = useState<LivePhotoDetection>({ loading: false, canPlay: false });
   const [isDragging, setIsDragging] = useState(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -611,47 +612,66 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
         className="!w-[100vw] !h-[100dvh] !max-w-[100vw] !max-h-[100dvh] p-0 border-0 shadow-none bg-transparent [&>button]:hidden"
         aria-describedby="image-preview-description"
       >
-        <div className="fixed top-4 right-4 z-50">
-          <Button
-            onClick={handleClose}
-            variant="secondary"
-            size="icon"
-            className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm"
-            aria-label="关闭图片预览"
-          >
-            <X className="h-4 w-4 text-popover-foreground" />
-          </Button>
+        <div className="fixed top-4 left-0 right-0 z-50 px-4 flex items-center justify-between pointer-events-none">
+          {/* 左侧：照片详情 */}
+          <div className="flex-1 pointer-events-auto flex justify-start">
+            {!isCurrentVideo && (
+              <Button
+                onClick={() => setDetailsOpen((prev) => !prev)}
+                variant="secondary"
+                size="sm"
+                className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
+                aria-label="切换照片详情"
+              >
+                <InfoIcon className="!h-4 !w-4" />
+                <span>照片详情</span>
+              </Button>
+            )}
+          </div>
+
+          {/* 中间：播放动图和静音按钮 */}
+          <div className="flex-[2] pointer-events-auto flex items-center justify-center">
+            {!isCurrentVideo && livePhoto.canPlay && imageDisplayMode !== "motion-video" && (
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handlePlayAnimated}
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground flex-shrink-0"
+                  aria-label="播放动图一次"
+                >
+                  <PlayIcon className="!h-4 !w-4" />
+                  <span>播放动图</span>
+                </Button>
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsLivePhotoMuted(!isLivePhotoMuted);
+                  }}
+                  variant="secondary"
+                  size="icon"
+                  className="h-8 w-8 rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground flex-shrink-0"
+                  aria-label={isLivePhotoMuted ? "取消静音" : "静音"}
+                >
+                  {isLivePhotoMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* 右侧：关闭按钮 */}
+          <div className="flex-1 flex justify-end pointer-events-auto">
+            <Button
+              onClick={handleClose}
+              variant="secondary"
+              size="icon"
+              className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm"
+              aria-label="关闭图片预览"
+            >
+              <X className="h-4 w-4 text-popover-foreground" />
+            </Button>
+          </div>
         </div>
-
-        {!isCurrentVideo && (
-          <div className="fixed top-4 left-4 z-50">
-            <Button
-              onClick={() => setDetailsOpen((prev) => !prev)}
-              variant="secondary"
-              size="sm"
-              className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
-              aria-label="切换照片详情"
-            >
-              <InfoIcon className="h-4 w-4 mr-1" />
-              照片详情
-            </Button>
-          </div>
-        )}
-
-        {!isCurrentVideo && livePhoto.canPlay && imageDisplayMode !== "motion-video" && (
-          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
-            <Button
-              onClick={handlePlayAnimated}
-              variant="secondary"
-              size="sm"
-              className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm text-popover-foreground"
-              aria-label="播放动图一次"
-            >
-              <PlayIcon className="h-4 w-4 mr-1" />
-              播放动图
-            </Button>
-          </div>
-        )}
 
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
           <div className="flex items-center gap-2">
@@ -1010,7 +1030,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
                               ref={(el) => { if (el && !isCurrent) el.pause(); }}
                               src={livePhoto.motionVideoUrl}
                               autoPlay
-                              muted
+                              muted={isLivePhotoMuted}
                               playsInline
                               className="block w-full h-full object-contain absolute inset-0 z-10"
                               onEnded={() => setImageDisplayMode("static")}
