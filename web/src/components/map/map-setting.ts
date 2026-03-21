@@ -59,3 +59,15 @@ export const setImageLocationCandidateDistanceMeters = (value: number): void => 
   }
   window.localStorage.setItem(IMAGE_LOCATION_CANDIDATE_DISTANCE_STORAGE_KEY, String(value));
 };
+
+export const toProviderLocation = (
+  provider: InstanceSetting_MemoRelatedSetting_MapSetting_MapProvider,
+  lat: number,
+  lng: number,
+): [number, number] => {
+  if (isAmapProvider(provider)) {
+    const [gcjLng, gcjLat] = wgs84ToGcj02(lng, lat);
+    return [gcjLat, gcjLng];
+  }
+  return [lat, lng];
+};

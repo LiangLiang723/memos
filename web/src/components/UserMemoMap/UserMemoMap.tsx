@@ -7,6 +7,8 @@ import { MapContainer, Marker, useMap } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import MemoView from "@/components/MemoView/MemoView";
 import { defaultMarkerIcon, ThemedTileLayer } from "@/components/map/map-utils";
+import { getMapSettingWithDefaults, toProviderLocation } from "@/components/map/map-setting";
+import { useInstance } from "@/contexts/InstanceContext";
 import { useInfiniteMemos } from "@/hooks/useMemoQueries";
 import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
@@ -46,7 +48,7 @@ const extractUserIdFromName = (name: string): string => {
 const INITIAL_VISIBLE_MEMO_COUNT = 23;
 const LOAD_MORE_MEMO_STEP = 9;
 
-const MapFitBounds = ({ memos }: { memos: Memo[] }) => {
+const MapFitBounds = ({ memos, provider }: { memos: Memo[], provider: any }) => {
   const map = useMap();
 
   useEffect(() => {
@@ -55,14 +57,16 @@ const MapFitBounds = ({ memos }: { memos: Memo[] }) => {
     const validMemos = memos.filter((m) => m.location);
     if (validMemos.length === 0) return;
 
-    const bounds = L.latLngBounds(validMemos.map((memo) => [memo.location!.latitude, memo.location!.longitude]));
+    const bounds = L.latLngBounds(validMemos.map((memo) => toProviderLocation(provider, memo.location!.latitude, memo.location!.longitude)));
     map.fitBounds(bounds, { padding: [50, 50] });
-  }, [memos, map]);
+  }, [memos, map, provider]);
 
   return null;
 };
 
 const UserMemoMap = ({ creator, filter, className }: Props) => {
+  const { memoRelatedSetting } = useInstance();
+  const mapSetting = getMapSettingWithDefaults(memoRelatedSetting.mapSetting);
   const creatorId = useMemo(() => (creator ? extractUserIdFromName(creator) : ""), [creator]);
   const combinedFilter = useMemo(() => {
     const conditions = [creatorId ? `creator_id == ${creatorId}` : "", filter || ""].filter(Boolean);
@@ -177,7 +181,7 @@ const UserMemoMap = ({ creator, filter, className }: Props) => {
             {memosWithLocation.map((memo) => (
               <Marker
                 key={memo.name}
-                position={[memo.location!.latitude, memo.location!.longitude]}
+                position={toProviderLocation(mapSetting.provider, memo.location!.latitude, memo.location!.longitude)}
                 icon={defaultMarkerIcon}
                 title={memo.name}
                 eventHandlers={{
@@ -188,7 +192,7 @@ const UserMemoMap = ({ creator, filter, className }: Props) => {
               />
             ))}
           </MarkerClusterGroup>
-          <MapFitBounds memos={memosWithLocation} />
+          <MapFitBounds memos={memosWithLocation} provider={mapSetting.provider} />
         </MapContainer>
       </div>
 
