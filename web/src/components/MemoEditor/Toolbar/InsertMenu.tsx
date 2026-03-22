@@ -12,6 +12,7 @@ import { getImageLocationCandidateDistanceMeters, getMapSettingWithDefaults } fr
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useInstance } from "@/contexts/InstanceContext";
+import useMediaQuery from "@/hooks/useMediaQuery";
 import { LocationSchema, type MemoRelation } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentUrl } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
@@ -39,6 +40,7 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
     newFiles.forEach((file) => dispatch(actions.addLocalFile(file)));
   });
 
+  const isMediumScreen = useMediaQuery("md");
   const photoInputRef = useRef<HTMLInputElement>(null);
   const handlePhotoClick = useCallback(() => {
     photoInputRef.current?.click();
@@ -466,13 +468,15 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="start">
-              <DropdownMenuItem
-                onClick={() => {
-                  handlePhotoClick();
-                }}
-              >
-                <ImageIcon className="size-4" /> {t("common.image")}
-              </DropdownMenuItem>
+              {!isMediumScreen && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    handlePhotoClick();
+                  }}
+                >
+                  <ImageIcon className="size-4" /> {t("common.image")}
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onClick={() => {
                   handleUploadClick();
@@ -505,17 +509,19 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
           </DropdownMenu>
         ) : (
           <>
-            {/* Image (Photo Library) button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePhotoClick()}
-              disabled={isUploading}
-              title={t("common.image")}
-              className="px-2 shadow-sm hover:shadow-md transition-all duration-200"
-            >
-              {isUploading ? <LoaderIcon className="size-4 animate-spin" /> : <ImageIcon className="size-4" />}
-            </Button>
+            {/* Image (Photo Library) button - only show on small screens */}
+            {!isMediumScreen && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePhotoClick()}
+                disabled={isUploading}
+                title={t("common.image")}
+                className="px-2 shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                {isUploading ? <LoaderIcon className="size-4 animate-spin" /> : <ImageIcon className="size-4" />}
+              </Button>
+            )}
 
             {/* Upload button */}
             <Button
@@ -554,7 +560,7 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
         onChange={handleFileInputChange}
         type="file"
         multiple={true}
-        accept="image/*"
+        accept="image/*,video/*"
       />
 
       <input
