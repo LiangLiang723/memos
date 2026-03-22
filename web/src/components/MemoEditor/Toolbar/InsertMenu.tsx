@@ -39,6 +39,11 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
     newFiles.forEach((file) => dispatch(actions.addLocalFile(file)));
   });
 
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const handlePhotoClick = useCallback(() => {
+    photoInputRef.current?.click();
+  }, []);
+
   const linkMemo = useLinkMemo({
     isOpen: linkDialogOpen,
     currentMemoName: props.memoName,
@@ -463,6 +468,13 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
             <DropdownMenuContent align="start">
               <DropdownMenuItem
                 onClick={() => {
+                  handlePhotoClick();
+                }}
+              >
+                <ImageIcon className="size-4" /> {t("common.image")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
                   handleUploadClick();
                 }}
               >
@@ -493,6 +505,18 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
           </DropdownMenu>
         ) : (
           <>
+            {/* Image (Photo Library) button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePhotoClick()}
+              disabled={isUploading}
+              title={t("common.image")}
+              className="px-2 shadow-sm hover:shadow-md transition-all duration-200"
+            >
+              {isUploading ? <LoaderIcon className="size-4 animate-spin" /> : <ImageIcon className="size-4" />}
+            </Button>
+
             {/* Upload button */}
             <Button
               variant="outline"
@@ -522,6 +546,16 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
           </>
         )}
       </div>
+
+      <input
+        className="hidden"
+        ref={photoInputRef}
+        disabled={isUploading}
+        onChange={handleFileInputChange}
+        type="file"
+        multiple={true}
+        accept="image/*"
+      />
 
       <input
         className="hidden"
