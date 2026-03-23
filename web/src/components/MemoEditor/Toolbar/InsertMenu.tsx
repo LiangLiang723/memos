@@ -7,12 +7,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useDebounce } from "react-use";
 import { useLocationCandidates, useReverseGeocoding } from "@/components/map";
+import useMediaQuery from "@/hooks/useMediaQuery";
 import { resolveLocationLabel } from "@/components/map/geocoding";
 import { getImageLocationCandidateDistanceMeters, getMapSettingWithDefaults } from "@/components/map/map-setting";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useInstance } from "@/contexts/InstanceContext";
-import useMediaQuery from "@/hooks/useMediaQuery";
 import { LocationSchema, type MemoRelation } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentUrl } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
@@ -560,7 +560,7 @@ const InsertMenu = (props: InsertMenuProps & { compact?: boolean }) => {
         onChange={handleFileInputChange}
         type="file"
         multiple={true}
-        accept="image/*,video/*"
+        accept="image/*"
       />
 
       <input

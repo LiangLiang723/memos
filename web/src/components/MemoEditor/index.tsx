@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useRef } from "react";
+import { useRef, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import useCurrentUser from "@/hooks/useCurrentUser";
@@ -8,13 +8,14 @@ import { userKeys } from "@/hooks/useUserQueries";
 import { handleError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
+import { getAttachmentUrl } from "@/utils/attachment";
 import { convertVisibilityFromString } from "@/utils/memo";
 import { MemoRelation_Type } from "@/types/proto/api/v1/memo_service_pb";
 import { EditorContent, EditorMetadata, EditorToolbar, FocusModeExitButton, FocusModeOverlay, TimestampPopover } from "./components";
 import { FOCUS_MODE_STYLES } from "./constants";
 import type { EditorRefActions } from "./Editor";
 import { useAutoSave, useFocusMode, useKeyboard, useMemoInit } from "./hooks";
-import { cacheService, errorService, memoService, validationService } from "./services";
+import { cacheService, errorService, memoService, uploadService, validationService } from "./services";
 import { EditorProvider, useEditorContext } from "./state";
 import type { MemoEditorProps } from "./types";
 
@@ -57,6 +58,53 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
   const handleToggleFocusMode = () => {
     dispatch(actions.toggleFocusMode());
   };
+
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
+
+  useEffect(() => {
+    (async () => {
+      if (state.localFiles.length === 0 || state.ui.isLoading.uploading) return;
+
+      dispatch(actions.setLoading("uploading", true));
+      dispatch(actions.setUploadProgress(0));
+      setUploadStatus("uploading");
+      try {
+        const attachments = await uploadService.uploadFiles(state.localFiles, (progress) => {
+          dispatch(actions.setUploadProgress(progress));
+        });
+
+        // 预加载图片以防止从本地 Blob URL 切换到远程 URL 时闪烁
+        await Promise.all(
+          attachments
+            .filter((a) => a.type.startsWith("image/"))
+            .map((a) => {
+              return new Promise<void>((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve();
+                img.onerror = () => resolve();
+                img.src = getAttachmentUrl(a);
+              });
+            })
+        );
+
+        dispatch(actions.setMetadata({ attachments: [...state.metadata.attachments, ...attachments] }));
+        setUploadStatus("success");
+      } catch (error) {
+        setUploadStatus("error");
+        handleError(error, toast.error, {
+          context: "Failed to upload files",
+          fallbackMessage: errorService.getErrorMessage(error),
+        });
+      } finally {
+        dispatch(actions.clearLocalFiles());
+        dispatch(actions.setLoading("uploading", false));
+        setTimeout(() => {
+          setUploadStatus("idle");
+          dispatch(actions.setUploadProgress(0));
+        }, 1000);
+      }
+    })();
+  }, [state.localFiles]);
 
   useKeyboard(editorRef, { onSave: handleSave });
 
@@ -148,6 +196,20 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
       >
         {/* Exit button is absolutely positioned in top-right corner when active */}
         <FocusModeExitButton isActive={state.ui.isFocusMode} onToggle={handleToggleFocusMode} title={t("editor.exit-focus-mode")} />
+
+        {uploadStatus !== "idle" && (
+          <div className="absolute top-0 left-0 w-full h-0.5 z-20 overflow-hidden rounded-t-xl">
+            <div
+              className={cn(
+                "h-full transition-all duration-300",
+                uploadStatus === "uploading" && "bg-primary",
+                uploadStatus === "success" && "bg-green-500",
+                uploadStatus === "error" && "bg-red-500",
+              )}
+              style={{ width: uploadStatus === "success" ? "100%" : `${state.ui.uploadProgress}%` }}
+            ></div>
+          </div>
+        )}
 
         <div className="w-full -mb-1">
           <TimestampPopover />
