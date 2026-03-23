@@ -8,7 +8,7 @@ import { userKeys } from "@/hooks/useUserQueries";
 import { handleError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
-import { getAttachmentUrl } from "@/utils/attachment";
+import { attachmentToItem } from "./types/attachment";
 import { convertVisibilityFromString } from "@/utils/memo";
 import { MemoRelation_Type } from "@/types/proto/api/v1/memo_service_pb";
 import { EditorContent, EditorMetadata, EditorToolbar, FocusModeExitButton, FocusModeOverlay, TimestampPopover } from "./components";
@@ -92,7 +92,7 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
                 const img = new Image();
                 img.onload = () => resolve();
                 img.onerror = () => resolve();
-                img.src = getAttachmentUrl(a);
+                img.src = attachmentToItem(a).thumbnailUrl;
               });
             })
         );
