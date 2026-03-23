@@ -1,4 +1,4 @@
-import { ChevronDownIcon, ChevronUpIcon, FileIcon, PaperclipIcon, XIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronUpIcon, FileIcon, PaperclipIcon, XIcon, LoaderIcon } from "lucide-react";
 import type { FC } from "react";
 import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
@@ -12,6 +12,7 @@ interface AttachmentListProps {
   localFiles?: LocalFile[];
   onAttachmentsChange?: (attachments: Attachment[]) => void;
   onRemoveLocalFile?: (previewUrl: string) => void;
+  uploadProgress?: number;
 }
 
 const isMediaAttachment = (attachment: Attachment): boolean => {
@@ -25,7 +26,8 @@ const AttachmentItemCard: FC<{
   onMoveDown?: () => void;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
-}> = ({ item, onRemove, onMoveUp, onMoveDown, canMoveUp = true, canMoveDown = true }) => {
+  uploadProgress?: number;
+}> = ({ item, onRemove, onMoveUp, onMoveDown, canMoveUp = true, canMoveDown = true, uploadProgress }) => {
   const t = useTranslate();
   const { category, filename, thumbnailUrl, mimeType, size } = item;
   const fileTypeLabel = getFileTypeLabel(mimeType);
@@ -33,7 +35,13 @@ const AttachmentItemCard: FC<{
 
   return (
     <div className="relative flex items-center gap-1.5 px-1.5 py-1 rounded border border-transparent hover:border-border hover:bg-accent/20 transition-all">
-      <div className="shrink-0 w-6 h-6 rounded overflow-hidden bg-muted/40 flex items-center justify-center">
+      <div className="shrink-0 w-6 h-6 rounded overflow-hidden bg-muted/40 flex items-center justify-center relative">
+        {item.isLocal && uploadProgress !== undefined && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10 transition-opacity">
+            <LoaderIcon className="w-3 h-3 text-white animate-spin" />
+          </div>
+        )}
+
         {category === "image" && thumbnailUrl ? (
           <img src={thumbnailUrl} alt="" className="w-full h-full object-cover" />
         ) : (
@@ -58,6 +66,11 @@ const AttachmentItemCard: FC<{
       </div>
 
       <div className="shrink-0 flex items-center gap-0.5">
+        {item.isLocal && typeof uploadProgress === "number" && uploadProgress > 0 && (
+          <span className="text-xs text-muted-foreground mr-1 flex items-center gap-1 font-mono">
+            {uploadProgress}% <LoaderIcon className="w-3 h-3 animate-spin" />
+          </span>
+        )}
         {onMoveUp && (
           <button
             type="button"
@@ -106,7 +119,7 @@ const AttachmentItemCard: FC<{
   );
 };
 
-const AttachmentList: FC<AttachmentListProps> = ({ attachments, localFiles = [], onAttachmentsChange, onRemoveLocalFile }) => {
+const AttachmentList: FC<AttachmentListProps> = ({ attachments, localFiles = [], onAttachmentsChange, onRemoveLocalFile, uploadProgress }) => {
   if (attachments.length === 0 && localFiles.length === 0) {
     return null;
   }
@@ -170,6 +183,7 @@ const AttachmentList: FC<AttachmentListProps> = ({ attachments, localFiles = [],
               onRemove={() => handleRemoveItem(item)}
               onMoveUp={!isLocalFile ? () => handleMoveUp(attachmentIndex) : undefined}
               onMoveDown={!isLocalFile ? () => handleMoveDown(attachmentIndex) : undefined}
+              uploadProgress={isLocalFile ? uploadProgress : undefined}
               canMoveUp={!isLocalFile && attachmentIndex > nonMediaStartIndex && !isMediaAttachment(attachments[attachmentIndex - 1])}
               canMoveDown={
                 !isLocalFile &&

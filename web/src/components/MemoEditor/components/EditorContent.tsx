@@ -1,4 +1,4 @@
-import { XIcon } from "lucide-react";
+import { XIcon, LoaderIcon } from "lucide-react";
 import { forwardRef } from "react";
 import Editor, { type EditorRefActions } from "../Editor";
 import { useBlobUrls, useDragAndDrop } from "../hooks";
@@ -99,6 +99,12 @@ export const EditorContent = forwardRef<EditorRefActions, EditorContentProps>(({
                   />
                 ) : (
                   <img src={media.thumbnailUrl} alt={media.filename} className="w-full h-full object-cover" />
+                )}
+                {media.isLocal && (
+                  <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center z-10 transition-opacity">
+                    <LoaderIcon className="size-5 text-white animate-spin mb-1" />
+                    <span className="text-white text-xs font-medium">{state.ui.uploadProgress > 0 ? `${state.ui.uploadProgress}%` : "等待..."}</span>
+                  </div>
                 )}
                 <button
                   type="button"

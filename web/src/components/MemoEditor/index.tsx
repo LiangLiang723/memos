@@ -60,16 +60,26 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
   };
 
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
+  const uploadingRef = useRef(new Set<string>());
+  const uploadSessionRef = useRef(0);
 
   useEffect(() => {
-    (async () => {
-      if (state.localFiles.length === 0 || state.ui.isLoading.uploading) return;
+    // 获取没在上传队列里也还没传成功的文件
+    const unuploadedFiles = state.localFiles.filter((f) => !uploadingRef.current.has(f.previewUrl));
+    if (unuploadedFiles.length === 0) return;
 
-      dispatch(actions.setLoading("uploading", true));
-      dispatch(actions.setUploadProgress(0));
-      setUploadStatus("uploading");
+    // 将这些新文件标记为正在上传
+    unuploadedFiles.forEach((f) => uploadingRef.current.add(f.previewUrl));
+    
+    dispatch(actions.setLoading("uploading", true));
+    dispatch(actions.setUploadProgress(0));
+    setUploadStatus("uploading");
+    
+    const session = ++uploadSessionRef.current;
+
+    (async () => {
       try {
-        const attachments = await uploadService.uploadFiles(state.localFiles, (progress) => {
+        const attachments = await uploadService.uploadFiles(unuploadedFiles, (progress) => {
           dispatch(actions.setUploadProgress(progress));
         });
 
@@ -87,24 +97,36 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
             })
         );
 
-        dispatch(actions.setMetadata({ attachments: [...state.metadata.attachments, ...attachments] }));
+        // 使用专门的 action 一张张增加远程附件，不粗暴覆盖 metadata
+        attachments.forEach((attachment, idx) => {
+          const originalFile = unuploadedFiles[idx];
+          dispatch(actions.addAttachment(attachment));
+          
+          // 精准移除对应上传完的那个本地文件（保留可能在你传图期间新增加的其他图片）
+          dispatch(actions.removeLocalFile(originalFile.previewUrl));
+          uploadingRef.current.delete(originalFile.previewUrl);
+        });
+
         setUploadStatus("success");
       } catch (error) {
         setUploadStatus("error");
+        // 如果出错，撤销正在上传的标记，允许用户下次重试
+        unuploadedFiles.forEach((f) => uploadingRef.current.delete(f.previewUrl));
         handleError(error, toast.error, {
           context: "Failed to upload files",
           fallbackMessage: errorService.getErrorMessage(error),
         });
       } finally {
-        dispatch(actions.clearLocalFiles());
         dispatch(actions.setLoading("uploading", false));
         setTimeout(() => {
-          setUploadStatus("idle");
-          dispatch(actions.setUploadProgress(0));
+          if (uploadSessionRef.current === session) {
+            setUploadStatus("idle");
+            dispatch(actions.setUploadProgress(0));
+          }
         }, 1000);
       }
     })();
-  }, [state.localFiles]);
+  }, [state.localFiles, dispatch, actions]);
 
   useKeyboard(editorRef, { onSave: handleSave });
 
@@ -196,20 +218,6 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
       >
         {/* Exit button is absolutely positioned in top-right corner when active */}
         <FocusModeExitButton isActive={state.ui.isFocusMode} onToggle={handleToggleFocusMode} title={t("editor.exit-focus-mode")} />
-
-        {uploadStatus !== "idle" && (
-          <div className="absolute top-0 left-0 w-full h-0.5 z-20 overflow-hidden rounded-t-xl">
-            <div
-              className={cn(
-                "h-full transition-all duration-300",
-                uploadStatus === "uploading" && "bg-primary",
-                uploadStatus === "success" && "bg-green-500",
-                uploadStatus === "error" && "bg-red-500",
-              )}
-              style={{ width: uploadStatus === "success" ? "100%" : `${state.ui.uploadProgress}%` }}
-            ></div>
-          </div>
-        )}
 
         <div className="w-full -mb-1">
           <TimestampPopover />
