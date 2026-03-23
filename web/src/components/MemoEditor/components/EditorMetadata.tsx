@@ -13,6 +13,7 @@ export const EditorMetadata: FC<EditorMetadataProps> = ({ memoName }) => {
       <AttachmentList
         attachments={state.metadata.attachments}
         localFiles={state.localFiles}
+        uploadProgress={state.ui.uploadProgress}
         onAttachmentsChange={(attachments) => dispatch(actions.setMetadata({ attachments }))}
         onRemoveLocalFile={(previewUrl) => dispatch(actions.removeLocalFile(previewUrl))}
       />
