@@ -20,6 +20,7 @@ export interface EditorState {
       uploading: boolean;
       loading: boolean;
     };
+    uploadProgress: number;
     isDragging: boolean;
     isComposing: boolean;
   };
@@ -43,6 +44,7 @@ export type EditorAction =
   | { type: "CLEAR_LOCAL_FILES" }
   | { type: "TOGGLE_FOCUS_MODE" }
   | { type: "SET_LOADING"; payload: { key: LoadingKey; value: boolean } }
+  | { type: "SET_UPLOAD_PROGRESS"; payload: number }
   | { type: "SET_DRAGGING"; payload: boolean }
   | { type: "SET_COMPOSING"; payload: boolean }
   | { type: "SET_TIMESTAMPS"; payload: Partial<EditorState["timestamps"]> }
@@ -63,6 +65,7 @@ export const initialState: EditorState = {
       uploading: false,
       loading: false,
     },
+    uploadProgress: 0,
     isDragging: false,
     isComposing: false,
   },

@@ -62,6 +62,11 @@ export const editorActions = {
     payload: { key, value },
   }),
 
+  setUploadProgress: (payload: number): EditorAction => ({
+    type: "SET_UPLOAD_PROGRESS",
+    payload,
+  }),
+
   setDragging: (value: boolean): EditorAction => ({
     type: "SET_DRAGGING",
     payload: value,

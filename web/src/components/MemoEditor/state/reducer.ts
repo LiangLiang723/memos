@@ -101,6 +101,15 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         },
       };
 
+    case "SET_UPLOAD_PROGRESS":
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          uploadProgress: action.payload,
+        },
+      };
+
     case "SET_DRAGGING":
       return {
         ...state,
