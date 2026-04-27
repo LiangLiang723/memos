@@ -44,8 +44,11 @@ export const useMemoViewDerived = () => {
   const isInMemoDetailPage = location.pathname.startsWith(`/${memo.name}`) || location.pathname.startsWith("/memos/shares/");
   const commentAmount = computeCommentAmount(memo);
 
-  const displayTimestamp = timeBasis === "update_time" ? memo.updateTime : memo.createTime;
-  const displayTime = displayTimestamp ? timestampDate(displayTimestamp) : undefined;
+  const createTime = memo.createTime ? timestampDate(memo.createTime) : undefined;
+  const updateTime = memo.updateTime ? timestampDate(memo.updateTime) : undefined;
+  const displayTime = timeBasis === "update_time" ? updateTime : createTime;
+  const isDisplayingUpdatedTime =
+    timeBasis === "update_time" && !!createTime && !!updateTime && updateTime.getTime() !== createTime.getTime();
   const relativeTimeFormat: "datetime" | "auto" =
     displayTime && Date.now() - displayTime.getTime() > RELATIVE_TIME_THRESHOLD_MS ? "datetime" : "auto";
 
@@ -54,7 +57,10 @@ export const useMemoViewDerived = () => {
     readonly,
     isInMemoDetailPage,
     commentAmount,
+    createTime,
+    updateTime,
     displayTime,
+    isDisplayingUpdatedTime,
     relativeTimeFormat,
   };
 };
