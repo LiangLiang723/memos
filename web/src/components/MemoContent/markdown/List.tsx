@@ -20,8 +20,8 @@ export const List = ({ ordered, children, className, node: _node, ...domProps }:
       className={cn(
         "my-0 mb-2 list-outside",
         isTaskList
-          ? // Task list: no bullets, nested lists get left margin for indentation
-            "list-none [&_ul.contains-task-list]:ml-6"
+          ? // Task list indentation is handled by task item grid columns.
+            "list-none"
           : // Regular list: standard padding and list style
             cn("pl-6", ordered ? "list-decimal" : "list-disc"),
         className,
@@ -40,7 +40,6 @@ interface ListItemProps extends React.LiHTMLAttributes<HTMLLIElement>, ReactMark
 /**
  * List item component for both regular and task list items
  * Detects task items via the "task-list-item" class added by remark-gfm
- * Applies specialized styling for task checkboxes
  */
 export const ListItem = ({ children, className, node: _node, ...domProps }: ListItemProps) => {
   const isTaskListItem = className?.includes(TASK_LIST_ITEM_CLASS);
@@ -49,11 +48,9 @@ export const ListItem = ({ children, className, node: _node, ...domProps }: List
     return (
       <li
         className={cn(
-          "mt-0.5 leading-6 list-none",
-          // Checkbox styling: margin and alignment
-          "[&>button]:mr-2 [&>button]:align-middle",
-          // Inline paragraph for task text
-          "[&>p]:inline [&>p]:m-0",
+          "mt-0.5 leading-6 list-none grid grid-cols-[auto_1fr] items-center gap-x-2",
+          "[&>ul]:col-start-2 [&>ul]:col-span-1 [&>ol]:col-start-2 [&>ol]:col-span-1",
+          "[&>p:first-child]:contents [&>p:not(:first-child)]:col-start-2 [&>p:not(:first-child)]:col-span-1",
           className,
         )}
         {...domProps}

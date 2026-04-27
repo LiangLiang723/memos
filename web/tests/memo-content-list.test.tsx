@@ -34,6 +34,8 @@ describe("memo content lists", () => {
     expect(html).toContain('<li class="mt-0.5 leading-6">milk</li>');
     expect(html).not.toContain('<li class="mt-0.5 leading-6">\n<p>milk</p>');
     expect(html).toContain(TASK_LIST_ITEM_CLASS);
+    expect(html).toContain("grid grid-cols-[auto_1fr] items-center gap-x-2");
+    expect(html).not.toMatch(/<li class="[^"]*task-list-item[^"]*"><p\b/);
   });
 
   it("keeps compact styling for pure task lists", () => {
@@ -41,5 +43,25 @@ describe("memo content lists", () => {
 
     expect(html).toMatch(/<ul class="[^"]*\blist-none\b[^"]*"/);
     expect(html).not.toMatch(/<ul class="[^"]*\blist-disc\b[^"]*"/);
+    expect(html).not.toMatch(/<li class="[^"]*task-list-item[^"]*"><p\b/);
+  });
+
+  it("keeps nested task lists on their own row", () => {
+    const html = renderListContent("- [ ] asdas\n  - [ ] zzzz");
+
+    expect(html).toContain("grid grid-cols-[auto_1fr] items-center gap-x-2");
+    expect(html).toContain("[&amp;&gt;ul]:col-start-2");
+    expect(html).not.toContain("[&amp;_ul.contains-task-list]:ml-6");
+    expect(html).toContain("zzzz");
+  });
+
+  it("keeps loose task list paragraphs while aligning the first line", () => {
+    const html = renderListContent("- [ ] plan\n\n  keep details\n\n- [ ] zzzz");
+
+    expect(html).toMatch(/<li class="[^"]*task-list-item[^"]*">\s*<p>/);
+    expect(html).toContain("[&amp;&gt;p:first-child]:contents");
+    expect(html).toContain("[&amp;&gt;p:not(:first-child)]:col-start-2");
+    expect(html).toContain("<p>keep details</p>");
+    expect(html).toContain("zzzz");
   });
 });

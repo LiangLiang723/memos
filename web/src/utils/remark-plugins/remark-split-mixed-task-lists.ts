@@ -1,11 +1,18 @@
 import type { List, ListItem, Root } from "mdast";
 import type { Parent } from "unist";
 
-const isTaskListItem = (item: ListItem): boolean => typeof item.checked === "boolean";
+const isTaskItem = (item: ListItem): boolean => typeof item.checked === "boolean";
+
+const isSingleBlockItem = (item: ListItem): boolean => item.children.length <= 1;
+
+const hasLooseBlockItem = (item: ListItem): boolean => !isSingleBlockItem(item) && Boolean(item.spread);
+
+const normalizeSplitListItems = (items: ListItem[]): ListItem[] =>
+  items.map((item) => (isSingleBlockItem(item) ? { ...item, spread: false } : item));
 
 const splitMixedList = (list: List): List[] => {
-  const hasTaskItem = list.children.some(isTaskListItem);
-  const hasRegularItem = list.children.some((item) => !isTaskListItem(item));
+  const hasTaskItem = list.children.some(isTaskItem);
+  const hasRegularItem = list.children.some((item) => !isTaskItem(item));
 
   if (!hasTaskItem || !hasRegularItem) {
     return [list];
@@ -13,7 +20,7 @@ const splitMixedList = (list: List): List[] => {
 
   const groups: Array<{ isTaskGroup: boolean; items: ListItem[] }> = [];
   for (const item of list.children) {
-    const isTaskGroup = isTaskListItem(item);
+    const isTaskGroup = isTaskItem(item);
     const previousGroup = groups.at(-1);
 
     if (previousGroup && previousGroup.isTaskGroup === isTaskGroup) {
@@ -23,11 +30,14 @@ const splitMixedList = (list: List): List[] => {
     }
   }
 
-  return groups.map(({ isTaskGroup, items }) => ({
-    ...list,
-    children: isTaskGroup ? items : items.map((item) => ({ ...item, spread: false })),
-    spread: isTaskGroup ? list.spread : false,
-  }));
+  return groups.map(({ items }) => {
+    const children = normalizeSplitListItems(items);
+    return {
+      ...list,
+      children,
+      spread: children.some(hasLooseBlockItem),
+    };
+  });
 };
 
 const splitMixedTaskListsInParent = (parent: Parent): void => {
