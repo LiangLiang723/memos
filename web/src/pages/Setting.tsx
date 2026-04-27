@@ -37,6 +37,9 @@ type SettingSection = "my-account" | "preference" | "webhook" | "member" | "syst
 
 const BASIC_SECTIONS: SettingSection[] = ["my-account", "preference", "webhook"];
 const ADMIN_SECTIONS: SettingSection[] = ["member", "system", "memo", "tags", "storage", "sso", "ai"];
+const GITHUB_COMMIT_URL_PREFIX = "https://github.com/usememos/memos/commit/";
+
+const isCommitSha = (commit: string) => /^[0-9a-f]{7,40}$/i.test(commit);
 
 const SECTION_ICON_MAP: Record<SettingSection, LucideIcon> = {
   "my-account": UserIcon,
@@ -72,6 +75,7 @@ const Setting = () => {
   const { profile, fetchSetting } = useInstance();
   const [selectedSection, setSelectedSection] = useState<SettingSection>("my-account");
   const isHost = user?.role === User_Role.ADMIN;
+  const commitUrl = isCommitSha(profile.commit) ? `${GITHUB_COMMIT_URL_PREFIX}${profile.commit}` : "";
 
   const settingsSectionList = useMemo(() => {
     return isHost ? [...BASIC_SECTIONS, ...ADMIN_SECTIONS] : [...BASIC_SECTIONS];
@@ -131,9 +135,21 @@ const Setting = () => {
                         onClick={() => handleSectionSelectorItemClick(item)}
                       />
                     ))}
-                    <span className="px-3 mt-2 opacity-70 text-sm">
-                      {t("setting.version")}: v{profile.version}
-                    </span>
+                    <div className="px-3 mt-2 opacity-70 text-sm leading-5">
+                      {t("setting.version")}: {profile.version}
+                      {profile.commit && (
+                        <span className="block font-mono break-all">
+                          Commit:{" "}
+                          {commitUrl ? (
+                            <a className="underline hover:text-foreground" href={commitUrl} target="_blank" rel="noreferrer">
+                              {profile.commit}
+                            </a>
+                          ) : (
+                            profile.commit
+                          )}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </>
               )}

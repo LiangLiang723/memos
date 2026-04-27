@@ -37,6 +37,7 @@ var (
 				InstanceURL: viper.GetString("instance-url"),
 			}
 			instanceProfile.Version = version.GetCurrentVersion()
+			instanceProfile.Commit = version.Commit
 			webhook.AllowPrivateIPs = viper.GetBool("allow-private-webhooks")
 
 			if err := instanceProfile.Validate(); err != nil {

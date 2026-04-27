@@ -30,6 +30,7 @@ func (s *APIV1Service) GetInstanceProfile(ctx context.Context, _ *v1pb.GetInstan
 		Demo:        s.Profile.Demo,
 		InstanceUrl: s.Profile.InstanceURL,
 		Admin:       admin, // nil when not initialized
+		Commit:      s.Profile.Commit,
 	}
 	return instanceProfile, nil
 }

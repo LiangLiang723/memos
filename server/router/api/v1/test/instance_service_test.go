@@ -29,6 +29,7 @@ func TestGetInstanceProfile(t *testing.T) {
 
 		// Verify the response contains expected data
 		require.Equal(t, "test-1.0.0", resp.Version)
+		require.Equal(t, "test-commit", resp.Commit)
 		require.True(t, resp.Demo)
 		require.Equal(t, "http://localhost:8080", resp.InstanceUrl)
 
@@ -56,6 +57,7 @@ func TestGetInstanceProfile(t *testing.T) {
 
 		// Verify the response contains expected data with initialized flag
 		require.Equal(t, "test-1.0.0", resp.Version)
+		require.Equal(t, "test-commit", resp.Commit)
 		require.True(t, resp.Demo)
 		require.Equal(t, "http://localhost:8080", resp.InstanceUrl)
 
@@ -102,6 +104,7 @@ func TestGetInstanceProfile_Concurrency(t *testing.T) {
 			case resp := <-results:
 				require.NotNil(t, resp)
 				require.Equal(t, "test-1.0.0", resp.Version)
+				require.Equal(t, "test-commit", resp.Commit)
 				require.True(t, resp.Demo)
 				require.Equal(t, "http://localhost:8080", resp.InstanceUrl)
 				require.NotNil(t, resp.Admin)

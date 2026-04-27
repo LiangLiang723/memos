@@ -48,6 +48,9 @@ message InstanceProfile {
   // The first administrator who set up this instance.
   // When null, instance requires initial setup (creating the first admin account).
   User admin = 7;
+
+  // Commit is the current build commit of instance.
+  string commit = 8;
 }
 
 // Request for instance profile.

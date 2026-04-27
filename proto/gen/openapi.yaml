@@ -2530,6 +2530,9 @@ components:
                     description: |-
                         The first administrator who set up this instance.
                          When null, instance requires initial setup (creating the first admin account).
+                commit:
+                    type: string
+                    description: Commit is the current build commit of instance.
             description: Instance profile message containing basic instance information.
         InstanceSetting:
             type: object
