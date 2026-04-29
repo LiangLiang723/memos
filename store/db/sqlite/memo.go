@@ -102,7 +102,9 @@ func (d *DB) ListMemos(ctx context.Context, find *store.FindMemo) ([]*store.Memo
 		where = append(where, fmt.Sprintf("`memo`.`visibility` IN (%s)", strings.Join(placeholder, ",")))
 	}
 	if find.ExcludeComments {
-		where = append(where, "`parent_uid` IS NULL")
+		// Use NOT EXISTS to avoid the double LEFT JOIN; much faster with the
+		// idx_memo_relation_memo_id index on large datasets.
+		where = append(where, "NOT EXISTS (SELECT 1 FROM `memo_relation` WHERE `memo_relation`.`memo_id` = `memo`.`id` AND `memo_relation`.`type` = 'COMMENT')")
 	}
 
 	order := "DESC"
@@ -130,17 +132,32 @@ func (d *DB) ListMemos(ctx context.Context, find *store.FindMemo) ([]*store.Memo
 		"`memo`.`visibility` AS `visibility`",
 		"`memo`.`pinned` AS `pinned`",
 		"`memo`.`payload` AS `payload`",
-		"CASE WHEN `parent_memo`.`uid` IS NOT NULL THEN `parent_memo`.`uid` ELSE NULL END AS `parent_uid`",
-	}
-	if !find.ExcludeContent {
-		fields = append(fields, "`memo`.`content` AS `content`")
 	}
 
-	query := "SELECT " + strings.Join(fields, ", ") + "FROM `memo` " +
-		"LEFT JOIN `memo_relation` ON `memo`.`id` = `memo_relation`.`memo_id` AND `memo_relation`.`type` = \"COMMENT\" " +
-		"LEFT JOIN `memo` AS `parent_memo` ON `memo_relation`.`related_memo_id` = `parent_memo`.`id` " +
-		"WHERE " + strings.Join(where, " AND ") + " " +
-		"ORDER BY " + strings.Join(orderBy, ", ")
+	// parent_uid must come before content to match rows.Scan destination order.
+	var query string
+	if find.ExcludeComments {
+		// No JOIN needed: comments are already excluded via NOT EXISTS above,
+		// and parent_uid is always NULL for top-level memos.
+		fields = append(fields, "NULL AS `parent_uid`")
+		if !find.ExcludeContent {
+			fields = append(fields, "`memo`.`content` AS `content`")
+		}
+		query = "SELECT " + strings.Join(fields, ", ") + " FROM `memo` " +
+			"WHERE " + strings.Join(where, " AND ") + " " +
+			"ORDER BY " + strings.Join(orderBy, ", ")
+	} else {
+		// Include parent_uid for comment-related queries (e.g. fetching a single memo's thread).
+		fields = append(fields, "CASE WHEN `parent_memo`.`uid` IS NOT NULL THEN `parent_memo`.`uid` ELSE NULL END AS `parent_uid`")
+		if !find.ExcludeContent {
+			fields = append(fields, "`memo`.`content` AS `content`")
+		}
+		query = "SELECT " + strings.Join(fields, ", ") + " FROM `memo` " +
+			"LEFT JOIN `memo_relation` ON `memo`.`id` = `memo_relation`.`memo_id` AND `memo_relation`.`type` = \"COMMENT\" " +
+			"LEFT JOIN `memo` AS `parent_memo` ON `memo_relation`.`related_memo_id` = `parent_memo`.`id` " +
+			"WHERE " + strings.Join(where, " AND ") + " " +
+			"ORDER BY " + strings.Join(orderBy, ", ")
+	}
 	if find.Limit != nil {
 		query = fmt.Sprintf("%s LIMIT %d", query, *find.Limit)
 		if find.Offset != nil {
