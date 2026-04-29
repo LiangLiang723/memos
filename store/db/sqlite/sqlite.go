@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -37,7 +38,13 @@ func NewDB(profile *profile.Profile) (store.Driver, error) {
 	// good practice to be explicit and prevent future surprises on SQLite upgrades.
 	// - Journal mode set to WAL: it's the recommended journal mode for most applications
 	// as it prevents locking issues.
-	// - mmap size set to 0: it disables memory mapping, which can cause OOM errors on some systems.
+	// - synchronous=NORMAL: safe with WAL mode (data is durable after each WAL write),
+	// significantly faster than the default FULL mode.
+	// - cache_size=-32000: 32 MB page cache per connection, reduces repeated disk reads.
+	// - temp_store=MEMORY: keep temporary tables/indexes in RAM rather than in temp files.
+	// - mmap_size=268435456: 256 MB memory-mapped I/O window; speeds up large-blob reads
+	// (the OS maps DB pages directly, bypassing the usual read() syscall overhead).
+	// Safe on 64-bit systems; SQLite's documentation recommends enabling it on WAL databases.
 	//
 	// Notes:
 	// - When using the `modernc.org/sqlite` driver, each pragma must be prefixed with `_pragma=`.
@@ -46,10 +53,25 @@ func NewDB(profile *profile.Profile) (store.Driver, error) {
 	// - https://pkg.go.dev/modernc.org/sqlite#Driver.Open
 	// - https://www.sqlite.org/sharedcache.html
 	// - https://www.sqlite.org/pragma.html
-	sqliteDB, err := sql.Open("sqlite", profile.DSN+"?_pragma=foreign_keys(0)&_pragma=busy_timeout(10000)&_pragma=journal_mode(WAL)&_pragma=mmap_size(0)")
+	sqliteDB, err := sql.Open("sqlite", profile.DSN+
+		"?_pragma=foreign_keys(0)"+
+		"&_pragma=busy_timeout(10000)"+
+		"&_pragma=journal_mode(WAL)"+
+		"&_pragma=synchronous(NORMAL)"+
+		"&_pragma=cache_size(-32000)"+
+		"&_pragma=temp_store(MEMORY)"+
+		"&_pragma=mmap_size(268435456)")
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to open db with dsn: %s", profile.DSN)
 	}
+
+	// SQLite supports multiple concurrent readers with WAL mode, but only one writer at a
+	// time. Keeping the pool modest prevents connection storms and reduces lock contention.
+	// busy_timeout handles transient write conflicts without returning an error immediately.
+	sqliteDB.SetMaxOpenConns(16)
+	sqliteDB.SetMaxIdleConns(4)
+	sqliteDB.SetConnMaxLifetime(time.Hour)
+	sqliteDB.SetConnMaxIdleTime(10 * time.Minute)
 
 	driver := DB{db: sqliteDB, profile: profile}
 

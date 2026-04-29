@@ -185,6 +185,9 @@ importers:
       uuid:
         specifier: ^11.1.0
         version: 11.1.0
+      vscode-languageserver-protocol:
+        specifier: ^3.17.5
+        version: 3.17.5
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.4.7

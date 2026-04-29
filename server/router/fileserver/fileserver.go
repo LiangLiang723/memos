@@ -124,9 +124,10 @@ func (s *FileServerService) serveAttachmentFile(c *echo.Context) error {
 	uid := c.Param("uid")
 	wantThumbnail := c.QueryParam("thumbnail") == "true"
 
+	// Step 1: Load metadata WITHOUT blob (cheap SQL read — the blob can be tens of MB).
 	attachment, err := s.Store.GetAttachment(ctx, &store.FindAttachment{
 		UID:     &uid,
-		GetBlob: true,
+		GetBlob: false,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get attachment").Wrap(err)
@@ -140,6 +141,38 @@ func (s *FileServerService) serveAttachmentFile(c *echo.Context) error {
 	}
 
 	contentType := s.sanitizeContentType(attachment.Type)
+
+	// Step 2: For database-stored attachments, try to short-circuit before loading the blob.
+	if attachment.StorageType == storepb.AttachmentStorageType_ATTACHMENT_STORAGE_TYPE_UNSPECIFIED {
+		modTime := time.Unix(attachment.UpdatedTs, 0)
+
+		// Fast-path A: thumbnail is already cached on disk — serve it without loading the full blob.
+		if wantThumbnail && thumbnailSupportedTypes[attachment.Type] {
+			if tPath, pathErr := s.getThumbnailPath(attachment); pathErr == nil {
+				if tBlob, readErr := s.readCachedThumbnail(tPath); readErr == nil {
+					setSecurityHeaders(c)
+					setMediaHeaders(c, contentType, attachment.Type)
+					http.ServeContent(c.Response(), c.Request(), attachment.Filename, modTime, bytes.NewReader(tBlob))
+					return nil
+				}
+			}
+		}
+
+		// Fast-path B: browser already has a fresh copy — return 304 without loading the blob.
+		if !wantThumbnail && isNotModifiedSince(c.Request(), modTime) {
+			c.Response().WriteHeader(http.StatusNotModified)
+			return nil
+		}
+	}
+
+	// Step 3: Blob is needed — reload with GetBlob:true.
+	attachment, err = s.Store.GetAttachment(ctx, &store.FindAttachment{
+		UID:     &uid,
+		GetBlob: true,
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get attachment").Wrap(err)
+	}
 
 	// Stream video/audio to avoid loading entire file into memory.
 	if isMediaType(attachment.Type) {
@@ -215,6 +248,8 @@ func (s *FileServerService) serveMediaStream(c *echo.Context, attachment *store.
 }
 
 // serveStaticFile serves non-streaming files (images, documents, etc.).
+// Uses http.ServeContent for proper range-request, ETag, and conditional-request support,
+// which prevents ERR_CACHE_WRITE_FAILURE on large files and enables efficient 304 responses.
 func (s *FileServerService) serveStaticFile(c *echo.Context, attachment *store.Attachment, contentType string, wantThumbnail bool) error {
 	blob, err := s.getAttachmentBlob(attachment)
 	if err != nil {
@@ -238,7 +273,12 @@ func (s *FileServerService) serveStaticFile(c *echo.Context, attachment *store.A
 		c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%q", attachment.Filename))
 	}
 
-	return c.Blob(http.StatusOK, contentType, blob)
+	// http.ServeContent provides range requests, ETags (via modtime+size),
+	// conditional requests (If-Modified-Since / If-None-Match), and correct
+	// Content-Length — all of which prevent large-file cache failures in browsers.
+	modTime := time.Unix(attachment.UpdatedTs, 0)
+	http.ServeContent(c.Response(), c.Request(), attachment.Filename, modTime, bytes.NewReader(blob))
+	return nil
 }
 
 // =============================================================================
@@ -564,6 +604,21 @@ func (*FileServerService) parseDataURI(dataURI string) (string, []byte, error) {
 // isMediaType checks if the MIME type is video or audio.
 func isMediaType(mimeType string) bool {
 	return strings.HasPrefix(mimeType, "video/") || strings.HasPrefix(mimeType, "audio/")
+}
+
+// isNotModifiedSince returns true when the request carries an If-Modified-Since
+// header that indicates the client's cached copy is still fresh.
+func isNotModifiedSince(r *http.Request, modTime time.Time) bool {
+	ims := r.Header.Get("If-Modified-Since")
+	if ims == "" {
+		return false
+	}
+	t, err := http.ParseTime(ims)
+	if err != nil {
+		return false
+	}
+	// Not modified when the resource has not changed since the client's copy.
+	return !modTime.Truncate(time.Second).After(t)
 }
 
 // setSecurityHeaders sets common security headers for all responses.
