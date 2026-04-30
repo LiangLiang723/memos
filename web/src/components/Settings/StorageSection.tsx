@@ -1,15 +1,21 @@
 import { create } from "@bufbuild/protobuf";
 import { isEqual } from "lodash-es";
-import React, { useEffect, useMemo, useState } from "react";
+import { Trash } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
+import AttachmentIcon from "@/components/AttachmentIcon";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import { instanceServiceClient } from "@/connect";
+import { attachmentServiceClient, instanceServiceClient } from "@/connect";
 import { useInstance } from "@/contexts/InstanceContext";
+import { useDeleteAttachment } from "@/hooks/useAttachmentQueries";
+import useDialog from "@/hooks/useDialog";
 import { handleError } from "@/lib/error";
+import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import {
   InstanceSetting_Key,
   InstanceSetting_StorageSetting,
@@ -32,10 +38,50 @@ const StorageSection = () => {
   const [instanceStorageSetting, setInstanceStorageSetting] = useState<InstanceSetting_StorageSetting>(originalSetting);
   const [isMigratingAttachments, setIsMigratingAttachments] = useState(false);
   const [isVacuumingDatabase, setIsVacuumingDatabase] = useState(false);
+  const deleteUnusedDialog = useDialog();
+  const { mutateAsync: deleteAttachment } = useDeleteAttachment();
+  const [unusedAttachments, setUnusedAttachments] = useState<Attachment[] | null>(null);
+  const [isDeletingUnused, setIsDeletingUnused] = useState(false);
 
   useEffect(() => {
     setInstanceStorageSetting(originalSetting);
   }, [originalSetting]);
+
+  const fetchUnusedAttachments = useCallback(async () => {
+    try {
+      let all: Attachment[] = [];
+      let token = "";
+      do {
+        const resp = await attachmentServiceClient.listAttachments({ pageSize: 1000, pageToken: token, filter: "" });
+        all = [...all, ...resp.attachments];
+        token = resp.nextPageToken;
+      } while (token);
+      setUnusedAttachments(all.filter((a) => !a.memo));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUnusedAttachments();
+  }, [fetchUnusedAttachments]);
+
+  const handleDeleteAllUnused = useCallback(async () => {
+    setIsDeletingUnused(true);
+    try {
+      const unused = unusedAttachments ?? [];
+      await Promise.all(unused.map((a) => deleteAttachment(a.name)));
+      toast.success(t("resource.delete-all-unused-success"));
+      await fetchUnusedAttachments();
+    } catch (error: unknown) {
+      handleError(error, toast.error, {
+        context: "Delete unused attachments",
+        fallbackMessage: t("resource.delete-all-unused-error"),
+      });
+    } finally {
+      setIsDeletingUnused(false);
+    }
+  }, [deleteAttachment, fetchUnusedAttachments, unusedAttachments, t]);
 
   const allowSaveStorageSetting = useMemo(() => {
     if (instanceStorageSetting.uploadSizeLimitMb <= 0) {
@@ -355,6 +401,53 @@ const StorageSection = () => {
           {t("common.save")}
         </Button>
       </div>
+
+      <SettingGroup title={t("resource.unused-resources")} showSeparator>
+        <div className="w-full flex flex-col gap-3">
+          <div className="w-full flex flex-row items-center justify-between">
+            <span className="text-sm text-muted-foreground">
+              {unusedAttachments === null
+                ? t("resource.fetching-data")
+                : unusedAttachments.length === 0
+                  ? t("resource.no-unused-resources")
+                  : `${unusedAttachments.length} ${t("resource.unused-resources").toLowerCase()}`}
+            </span>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={isDeletingUnused || !unusedAttachments || unusedAttachments.length === 0}
+              onClick={() => deleteUnusedDialog.open()}
+            >
+              <Trash className="w-4 h-4 mr-1" />
+              {t("resource.delete-all-unused")}
+            </Button>
+          </div>
+          {unusedAttachments && unusedAttachments.length > 0 && (
+            <div className="w-full grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+              {unusedAttachments.map((attachment) => (
+                <div key={attachment.name} className="w-full flex flex-col items-start gap-1">
+                  <div className="w-full h-0 pb-[100%] relative overflow-hidden rounded-md border border-border/50 bg-muted/40">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <AttachmentIcon attachment={attachment} strokeWidth={0.5} />
+                    </div>
+                  </div>
+                  <p className="w-full text-xs text-muted-foreground truncate px-0.5">{attachment.filename}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </SettingGroup>
+
+      <ConfirmDialog
+        open={deleteUnusedDialog.isOpen}
+        onOpenChange={deleteUnusedDialog.setOpen}
+        title={t("resource.delete-all-unused-confirm")}
+        confirmLabel={t("common.delete")}
+        cancelLabel={t("common.cancel")}
+        onConfirm={handleDeleteAllUnused}
+        confirmVariant="destructive"
+      />
     </SettingSection>
   );
 };

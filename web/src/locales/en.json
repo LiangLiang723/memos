@@ -237,6 +237,7 @@
     },
     "delete-all-unused": "Delete all unused",
     "delete-all-unused-confirm": "Are you sure you want to delete all unused resources? THIS ACTION IS IRREVERSIBLE",
+    "delete-all-unused-description": "Permanently remove all attachments that are not linked to any memo.",
     "delete-all-unused-error": "Failed to delete unused resources",
     "delete-all-unused-success": "Resources deleted successfully",
     "delete-resource": "Delete Resource",

@@ -237,6 +237,7 @@
     },
     "delete-all-unused": "删除所有未使用资源",
     "delete-all-unused-confirm": "您确定要删除所有未使用资源吗？（此操作不可逆）",
+    "delete-all-unused-description": "永久删除所有未链接到任何备忘录的附件。",
     "delete-all-unused-error": "删除未使用的资源失败",
     "delete-all-unused-success": "删除资源成功",
     "delete-resource": "删除资源",

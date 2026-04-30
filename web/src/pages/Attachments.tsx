@@ -1,28 +1,22 @@
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import dayjs from "dayjs";
-import { ExternalLinkIcon, PaperclipIcon, SearchIcon, Trash } from "lucide-react";
+import { ExternalLinkIcon, PaperclipIcon, SearchIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Link } from "react-router-dom";
-import { getAccessToken } from "@/auth-state";
 import AttachmentIcon from "@/components/AttachmentIcon";
-import ConfirmDialog from "@/components/ConfirmDialog";
 import Empty from "@/components/Empty";
 import MobileHeader from "@/components/MobileHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { attachmentServiceClient } from "@/connect";
 import { extractUserIdFromName } from "@/helpers/resource-names";
-import { useDeleteAttachment } from "@/hooks/useAttachmentQueries";
 import useCurrentUser from "@/hooks/useCurrentUser";
-import useDialog from "@/hooks/useDialog";
 import useLoading from "@/hooks/useLoading";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import i18n from "@/i18n";
 import { handleError } from "@/lib/error";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
-import { User_Role } from "@/types/proto/api/v1/user_service_pb";
 import { getAttachmentUrl } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
 
@@ -99,15 +93,12 @@ const Attachments = () => {
   const md = useMediaQuery("md");
   const currentUser = useCurrentUser();
   const loadingState = useLoading();
-  const deleteUnusedAttachmentsDialog = useDialog();
-  const { mutateAsync: deleteAttachment } = useDeleteAttachment();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [scope, setScope] = useState<AttachmentScope>("workspace");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [nextPageToken, setNextPageToken] = useState("");
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [isCompactingSQLite, setIsCompactingSQLite] = useState(false);
 
   const currentUserId = useMemo(() => {
     if (!currentUser?.name) {
@@ -124,15 +115,10 @@ const Attachments = () => {
     return `creator_id == ${currentUserId}`;
   }, [scope, currentUserId]);
 
-  const isAdmin = currentUser?.role === User_Role.ADMIN;
-  const canDeleteAllUnused = scope === "mine" || isAdmin;
-
   // Memoized computed values
   const filteredAttachments = useMemo(() => filterAttachments(attachments, searchQuery), [attachments, searchQuery]);
 
   const usedAttachments = useMemo(() => filteredAttachments.filter((attachment) => attachment.memo), [filteredAttachments]);
-
-  const unusedAttachments = useMemo(() => filteredAttachments.filter((attachment) => !attachment.memo), [filteredAttachments]);
 
   const groupedAttachments = useMemo(() => groupAttachmentsByDate(usedAttachments), [usedAttachments]);
 
@@ -187,90 +173,6 @@ const Attachments = () => {
       setIsLoadingMore(false);
     }
   }, [buildListRequest, nextPageToken, isLoadingMore]);
-
-  // Refetch all attachments from the beginning
-  const handleRefetch = useCallback(async () => {
-    try {
-      loadingState.setLoading();
-      const { attachments: fetchedAttachments, nextPageToken } = await attachmentServiceClient.listAttachments(buildListRequest());
-      setAttachments(fetchedAttachments);
-      setNextPageToken(nextPageToken ?? "");
-      loadingState.setFinish();
-    } catch (error) {
-      handleError(error, toast.error, {
-        context: "Failed to refetch attachments",
-        fallbackMessage: "Failed to refresh attachments. Please try again.",
-        onError: () => loadingState.setError(),
-      });
-    }
-  }, [buildListRequest, loadingState]);
-
-  // Delete all unused attachments
-  const handleDeleteUnusedAttachments = useCallback(async () => {
-    if (!canDeleteAllUnused) {
-      toast.error("Permission denied");
-      return;
-    }
-
-    try {
-      let allAttachments: Attachment[] = [];
-      let nextPageToken = "";
-      const deleteFilter = isAdmin ? "" : scopeFilter;
-      do {
-        const response = await attachmentServiceClient.listAttachments({
-          pageSize: 1000,
-          pageToken: nextPageToken,
-          filter: deleteFilter,
-        });
-        allAttachments = [...allAttachments, ...response.attachments];
-        nextPageToken = response.nextPageToken;
-      } while (nextPageToken);
-
-      const allUnusedAttachments = allAttachments.filter((attachment) => !attachment.memo);
-      await Promise.all(allUnusedAttachments.map((attachment) => deleteAttachment(attachment.name)));
-      toast.success(t("resource.delete-all-unused-success"));
-    } catch (error) {
-      handleError(error, toast.error, {
-        context: "Failed to delete unused attachments",
-        fallbackMessage: t("resource.delete-all-unused-error"),
-      });
-    } finally {
-      await handleRefetch();
-    }
-  }, [canDeleteAllUnused, scopeFilter, t, handleRefetch, deleteAttachment]);
-
-  const handleCompactSQLite = useCallback(async () => {
-    if (!isAdmin || isCompactingSQLite) {
-      return;
-    }
-
-    setIsCompactingSQLite(true);
-    try {
-      const accessToken = getAccessToken();
-      const headers: Record<string, string> = {};
-      if (accessToken) {
-        headers.Authorization = `Bearer ${accessToken}`;
-      }
-
-      const compactResponse = await fetch(`${window.location.origin}/api/v1/admin/sqlite/compact`, {
-        method: "POST",
-        credentials: "include",
-        headers,
-      });
-      if (!compactResponse.ok) {
-        throw new Error("Failed to compact sqlite database");
-      }
-
-      toast.success(t("resource.reclaim-sqlite-space-success"));
-    } catch (error) {
-      handleError(error, toast.error, {
-        context: "Failed to compact sqlite database",
-        fallbackMessage: t("resource.reclaim-sqlite-space-error"),
-      });
-    } finally {
-      setIsCompactingSQLite(false);
-    }
-  }, [isAdmin, isCompactingSQLite, t]);
 
   // Handle search input change
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -347,54 +249,7 @@ const Attachments = () => {
                         );
                       })}
 
-                      <>
-                        <Separator />
-                        <div className="w-full flex flex-row justify-start items-start">
-                          <div className="w-16 sm:w-24 sm:pl-4 flex flex-col justify-start items-start"></div>
-                          <div className="w-full max-w-[calc(100%-4rem)] sm:max-w-[calc(100%-6rem)] grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
-                            <div className="col-span-3 sm:col-span-4 md:col-span-5 w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                              <div className="flex flex-row items-center gap-2">
-                                <span className="text-muted-foreground">{t("resource.unused-resources")}</span>
-                                <span className="text-muted-foreground opacity-80">({unusedAttachments.length})</span>
-                              </div>
-                              {(canDeleteAllUnused || isAdmin) && (
-                                <div className="flex w-full sm:w-auto flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                                  {isAdmin && (
-                                    <Button
-                                      variant="outline"
-                                      onClick={handleCompactSQLite}
-                                      size="sm"
-                                      disabled={isCompactingSQLite}
-                                      className="w-full sm:w-auto"
-                                    >
-                                      {isCompactingSQLite ? t("resource.reclaim-sqlite-space-loading") : t("resource.reclaim-sqlite-space")}
-                                    </Button>
-                                  )}
-                                  {canDeleteAllUnused && (
-                                    <Button
-                                      variant="destructive"
-                                      onClick={() => deleteUnusedAttachmentsDialog.open()}
-                                      size="sm"
-                                      className="w-full sm:w-auto"
-                                    >
-                                      <Trash />
-                                      {t("resource.delete-all-unused")}
-                                    </Button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                            {unusedAttachments.map((attachment) => (
-                              <AttachmentItem key={attachment.name} attachment={attachment} />
-                            ))}
-                            {unusedAttachments.length === 0 && (
-                              <div className="col-span-3 sm:col-span-4 md:col-span-5 text-sm text-muted-foreground italic">
-                                {t("resource.no-unused-resources")}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </>
+
                     </div>
                     {nextPageToken && (
                       <div className="w-full flex flex-row justify-center items-center mt-4">
@@ -411,15 +266,6 @@ const Attachments = () => {
         </div>
       </div>
 
-      <ConfirmDialog
-        open={deleteUnusedAttachmentsDialog.isOpen}
-        onOpenChange={deleteUnusedAttachmentsDialog.setOpen}
-        title={t("resource.delete-all-unused-confirm")}
-        confirmLabel={t("common.delete")}
-        cancelLabel={t("common.cancel")}
-        onConfirm={handleDeleteUnusedAttachments}
-        confirmVariant="destructive"
-      />
     </section>
   );
 };
