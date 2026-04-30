@@ -47,6 +47,7 @@ type FindAttachment struct {
 	CreatorID      *int32
 	Filename       *string
 	FilenameSearch *string
+	TypePrefix     *string
 	MemoID         *int32
 	MemoIDList     []int32
 	HasRelatedMemo bool
@@ -57,13 +58,15 @@ type FindAttachment struct {
 }
 
 type UpdateAttachment struct {
-	ID        int32
-	UID       *string
-	UpdatedTs *int64
-	Filename  *string
-	MemoID    *int32
-	Reference *string
-	Payload   *storepb.AttachmentPayload
+	ID          int32
+	UID         *string
+	UpdatedTs   *int64
+	Filename    *string
+	Blob        *[]byte
+	MemoID      *int32
+	StorageType *storepb.AttachmentStorageType
+	Reference   *string
+	Payload     *storepb.AttachmentPayload
 }
 
 type DeleteAttachment struct {

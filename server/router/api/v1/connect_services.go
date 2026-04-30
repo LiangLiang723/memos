@@ -39,6 +39,30 @@ func (s *ConnectServiceHandler) UpdateInstanceSetting(ctx context.Context, req *
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) MigrateDatabaseAttachmentsToLocal(ctx context.Context, req *connect.Request[v1pb.MigrateDatabaseAttachmentsToLocalRequest]) (*connect.Response[v1pb.MigrateDatabaseAttachmentsToLocalResponse], error) {
+	resp, err := s.APIV1Service.MigrateDatabaseAttachmentsToLocal(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) MigrateLocalAttachmentsToDatabase(ctx context.Context, req *connect.Request[v1pb.MigrateLocalAttachmentsToDatabaseRequest]) (*connect.Response[v1pb.MigrateLocalAttachmentsToDatabaseResponse], error) {
+	resp, err := s.APIV1Service.MigrateLocalAttachmentsToDatabase(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) VacuumDatabase(ctx context.Context, req *connect.Request[v1pb.VacuumDatabaseRequest]) (*connect.Response[v1pb.VacuumDatabaseResponse], error) {
+	resp, err := s.APIV1Service.VacuumDatabase(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 // AuthService
 //
 // Auth service methods need special handling for response headers (cookies).

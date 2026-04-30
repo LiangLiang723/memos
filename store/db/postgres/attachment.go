@@ -55,6 +55,9 @@ func (d *DB) ListAttachments(ctx context.Context, find *store.FindAttachment) ([
 	if v := find.FilenameSearch; v != nil {
 		where, args = append(where, "attachment.filename LIKE "+placeholder(len(args)+1)), append(args, fmt.Sprintf("%%%s%%", *v))
 	}
+	if v := find.TypePrefix; v != nil {
+		where, args = append(where, "attachment.type LIKE "+placeholder(len(args)+1)), append(args, *v+"%")
+	}
 	if v := find.MemoID; v != nil {
 		where, args = append(where, "attachment.memo_id = "+placeholder(len(args)+1)), append(args, *v)
 	}
@@ -70,7 +73,12 @@ func (d *DB) ListAttachments(ctx context.Context, find *store.FindAttachment) ([
 		where = append(where, "attachment.memo_id IS NOT NULL")
 	}
 	if v := find.StorageType; v != nil {
-		where, args = append(where, "attachment.storage_type = "+placeholder(len(args)+1)), append(args, v.String())
+		if *v == storepb.AttachmentStorageType_ATTACHMENT_STORAGE_TYPE_UNSPECIFIED {
+			where = append(where, "(attachment.storage_type = '' OR attachment.storage_type = "+placeholder(len(args)+1)+")")
+			args = append(args, v.String())
+		} else {
+			where, args = append(where, "attachment.storage_type = "+placeholder(len(args)+1)), append(args, v.String())
+		}
 	}
 
 	if len(find.Filters) > 0 {
@@ -182,8 +190,14 @@ func (d *DB) UpdateAttachment(ctx context.Context, update *store.UpdateAttachmen
 	if v := update.Filename; v != nil {
 		set, args = append(set, "filename = "+placeholder(len(args)+1)), append(args, *v)
 	}
+	if v := update.Blob; v != nil {
+		set, args = append(set, "blob = "+placeholder(len(args)+1)), append(args, *v)
+	}
 	if v := update.MemoID; v != nil {
 		set, args = append(set, "memo_id = "+placeholder(len(args)+1)), append(args, *v)
+	}
+	if v := update.StorageType; v != nil {
+		set, args = append(set, "storage_type = "+placeholder(len(args)+1)), append(args, v.String())
 	}
 	if v := update.Reference; v != nil {
 		set, args = append(set, "reference = "+placeholder(len(args)+1)), append(args, *v)

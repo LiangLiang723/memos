@@ -506,6 +506,321 @@ func (x *UpdateInstanceSettingRequest) GetUpdateMask() *fieldmaskpb.FieldMask {
 	return nil
 }
 
+type MigrateDatabaseAttachmentsToLocalRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Optional. Maximum number of attachments to migrate in this request.
+	BatchSize     int32 `protobuf:"varint,1,opt,name=batch_size,json=batchSize,proto3" json:"batch_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MigrateDatabaseAttachmentsToLocalRequest) Reset() {
+	*x = MigrateDatabaseAttachmentsToLocalRequest{}
+	mi := &file_api_v1_instance_service_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MigrateDatabaseAttachmentsToLocalRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MigrateDatabaseAttachmentsToLocalRequest) ProtoMessage() {}
+
+func (x *MigrateDatabaseAttachmentsToLocalRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_instance_service_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MigrateDatabaseAttachmentsToLocalRequest.ProtoReflect.Descriptor instead.
+func (*MigrateDatabaseAttachmentsToLocalRequest) Descriptor() ([]byte, []int) {
+	return file_api_v1_instance_service_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *MigrateDatabaseAttachmentsToLocalRequest) GetBatchSize() int32 {
+	if x != nil {
+		return x.BatchSize
+	}
+	return 0
+}
+
+type MigrateDatabaseAttachmentsToLocalResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The number of database-backed image attachments found before migration.
+	Total int32 `protobuf:"varint,1,opt,name=total,proto3" json:"total,omitempty"`
+	// The number of attachments migrated in this request.
+	Migrated int32 `protobuf:"varint,2,opt,name=migrated,proto3" json:"migrated,omitempty"`
+	// The number of matching attachments that had already been migrated or could be skipped.
+	Skipped int32 `protobuf:"varint,3,opt,name=skipped,proto3" json:"skipped,omitempty"`
+	// Human-readable status detail.
+	Message       string `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MigrateDatabaseAttachmentsToLocalResponse) Reset() {
+	*x = MigrateDatabaseAttachmentsToLocalResponse{}
+	mi := &file_api_v1_instance_service_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MigrateDatabaseAttachmentsToLocalResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MigrateDatabaseAttachmentsToLocalResponse) ProtoMessage() {}
+
+func (x *MigrateDatabaseAttachmentsToLocalResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_instance_service_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MigrateDatabaseAttachmentsToLocalResponse.ProtoReflect.Descriptor instead.
+func (*MigrateDatabaseAttachmentsToLocalResponse) Descriptor() ([]byte, []int) {
+	return file_api_v1_instance_service_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *MigrateDatabaseAttachmentsToLocalResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *MigrateDatabaseAttachmentsToLocalResponse) GetMigrated() int32 {
+	if x != nil {
+		return x.Migrated
+	}
+	return 0
+}
+
+func (x *MigrateDatabaseAttachmentsToLocalResponse) GetSkipped() int32 {
+	if x != nil {
+		return x.Skipped
+	}
+	return 0
+}
+
+func (x *MigrateDatabaseAttachmentsToLocalResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type MigrateLocalAttachmentsToDatabaseRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Optional. Maximum number of attachments to migrate in this request.
+	BatchSize     int32 `protobuf:"varint,1,opt,name=batch_size,json=batchSize,proto3" json:"batch_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MigrateLocalAttachmentsToDatabaseRequest) Reset() {
+	*x = MigrateLocalAttachmentsToDatabaseRequest{}
+	mi := &file_api_v1_instance_service_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MigrateLocalAttachmentsToDatabaseRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MigrateLocalAttachmentsToDatabaseRequest) ProtoMessage() {}
+
+func (x *MigrateLocalAttachmentsToDatabaseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_instance_service_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MigrateLocalAttachmentsToDatabaseRequest.ProtoReflect.Descriptor instead.
+func (*MigrateLocalAttachmentsToDatabaseRequest) Descriptor() ([]byte, []int) {
+	return file_api_v1_instance_service_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *MigrateLocalAttachmentsToDatabaseRequest) GetBatchSize() int32 {
+	if x != nil {
+		return x.BatchSize
+	}
+	return 0
+}
+
+type MigrateLocalAttachmentsToDatabaseResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The number of local image attachments found before migration.
+	Total int32 `protobuf:"varint,1,opt,name=total,proto3" json:"total,omitempty"`
+	// The number of attachments migrated in this request.
+	Migrated int32 `protobuf:"varint,2,opt,name=migrated,proto3" json:"migrated,omitempty"`
+	// The number of matching attachments that had already been migrated or could be skipped.
+	Skipped int32 `protobuf:"varint,3,opt,name=skipped,proto3" json:"skipped,omitempty"`
+	// Human-readable status detail.
+	Message       string `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MigrateLocalAttachmentsToDatabaseResponse) Reset() {
+	*x = MigrateLocalAttachmentsToDatabaseResponse{}
+	mi := &file_api_v1_instance_service_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MigrateLocalAttachmentsToDatabaseResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MigrateLocalAttachmentsToDatabaseResponse) ProtoMessage() {}
+
+func (x *MigrateLocalAttachmentsToDatabaseResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_instance_service_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MigrateLocalAttachmentsToDatabaseResponse.ProtoReflect.Descriptor instead.
+func (*MigrateLocalAttachmentsToDatabaseResponse) Descriptor() ([]byte, []int) {
+	return file_api_v1_instance_service_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *MigrateLocalAttachmentsToDatabaseResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *MigrateLocalAttachmentsToDatabaseResponse) GetMigrated() int32 {
+	if x != nil {
+		return x.Migrated
+	}
+	return 0
+}
+
+func (x *MigrateLocalAttachmentsToDatabaseResponse) GetSkipped() int32 {
+	if x != nil {
+		return x.Skipped
+	}
+	return 0
+}
+
+func (x *MigrateLocalAttachmentsToDatabaseResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type VacuumDatabaseRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VacuumDatabaseRequest) Reset() {
+	*x = VacuumDatabaseRequest{}
+	mi := &file_api_v1_instance_service_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VacuumDatabaseRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VacuumDatabaseRequest) ProtoMessage() {}
+
+func (x *VacuumDatabaseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_instance_service_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VacuumDatabaseRequest.ProtoReflect.Descriptor instead.
+func (*VacuumDatabaseRequest) Descriptor() ([]byte, []int) {
+	return file_api_v1_instance_service_proto_rawDescGZIP(), []int{9}
+}
+
+type VacuumDatabaseResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Human-readable status detail.
+	Message       string `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VacuumDatabaseResponse) Reset() {
+	*x = VacuumDatabaseResponse{}
+	mi := &file_api_v1_instance_service_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VacuumDatabaseResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VacuumDatabaseResponse) ProtoMessage() {}
+
+func (x *VacuumDatabaseResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_instance_service_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VacuumDatabaseResponse.ProtoReflect.Descriptor instead.
+func (*VacuumDatabaseResponse) Descriptor() ([]byte, []int) {
+	return file_api_v1_instance_service_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *VacuumDatabaseResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 // General instance settings configuration.
 type InstanceSetting_GeneralSetting struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -533,7 +848,7 @@ type InstanceSetting_GeneralSetting struct {
 
 func (x *InstanceSetting_GeneralSetting) Reset() {
 	*x = InstanceSetting_GeneralSetting{}
-	mi := &file_api_v1_instance_service_proto_msgTypes[5]
+	mi := &file_api_v1_instance_service_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -545,7 +860,7 @@ func (x *InstanceSetting_GeneralSetting) String() string {
 func (*InstanceSetting_GeneralSetting) ProtoMessage() {}
 
 func (x *InstanceSetting_GeneralSetting) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_instance_service_proto_msgTypes[5]
+	mi := &file_api_v1_instance_service_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -635,7 +950,7 @@ type InstanceSetting_StorageSetting struct {
 
 func (x *InstanceSetting_StorageSetting) Reset() {
 	*x = InstanceSetting_StorageSetting{}
-	mi := &file_api_v1_instance_service_proto_msgTypes[6]
+	mi := &file_api_v1_instance_service_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -647,7 +962,7 @@ func (x *InstanceSetting_StorageSetting) String() string {
 func (*InstanceSetting_StorageSetting) ProtoMessage() {}
 
 func (x *InstanceSetting_StorageSetting) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_instance_service_proto_msgTypes[6]
+	mi := &file_api_v1_instance_service_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -712,7 +1027,7 @@ type InstanceSetting_MemoRelatedSetting struct {
 
 func (x *InstanceSetting_MemoRelatedSetting) Reset() {
 	*x = InstanceSetting_MemoRelatedSetting{}
-	mi := &file_api_v1_instance_service_proto_msgTypes[7]
+	mi := &file_api_v1_instance_service_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -724,7 +1039,7 @@ func (x *InstanceSetting_MemoRelatedSetting) String() string {
 func (*InstanceSetting_MemoRelatedSetting) ProtoMessage() {}
 
 func (x *InstanceSetting_MemoRelatedSetting) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_instance_service_proto_msgTypes[7]
+	mi := &file_api_v1_instance_service_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -794,7 +1109,7 @@ type InstanceSetting_GeneralSetting_CustomProfile struct {
 
 func (x *InstanceSetting_GeneralSetting_CustomProfile) Reset() {
 	*x = InstanceSetting_GeneralSetting_CustomProfile{}
-	mi := &file_api_v1_instance_service_proto_msgTypes[8]
+	mi := &file_api_v1_instance_service_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -806,7 +1121,7 @@ func (x *InstanceSetting_GeneralSetting_CustomProfile) String() string {
 func (*InstanceSetting_GeneralSetting_CustomProfile) ProtoMessage() {}
 
 func (x *InstanceSetting_GeneralSetting_CustomProfile) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_instance_service_proto_msgTypes[8]
+	mi := &file_api_v1_instance_service_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -859,7 +1174,7 @@ type InstanceSetting_StorageSetting_S3Config struct {
 
 func (x *InstanceSetting_StorageSetting_S3Config) Reset() {
 	*x = InstanceSetting_StorageSetting_S3Config{}
-	mi := &file_api_v1_instance_service_proto_msgTypes[9]
+	mi := &file_api_v1_instance_service_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -871,7 +1186,7 @@ func (x *InstanceSetting_StorageSetting_S3Config) String() string {
 func (*InstanceSetting_StorageSetting_S3Config) ProtoMessage() {}
 
 func (x *InstanceSetting_StorageSetting_S3Config) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_instance_service_proto_msgTypes[9]
+	mi := &file_api_v1_instance_service_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -944,7 +1259,7 @@ type InstanceSetting_MemoRelatedSetting_MapSetting struct {
 
 func (x *InstanceSetting_MemoRelatedSetting_MapSetting) Reset() {
 	*x = InstanceSetting_MemoRelatedSetting_MapSetting{}
-	mi := &file_api_v1_instance_service_proto_msgTypes[10]
+	mi := &file_api_v1_instance_service_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -956,7 +1271,7 @@ func (x *InstanceSetting_MemoRelatedSetting_MapSetting) String() string {
 func (*InstanceSetting_MemoRelatedSetting_MapSetting) ProtoMessage() {}
 
 func (x *InstanceSetting_MemoRelatedSetting_MapSetting) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_instance_service_proto_msgTypes[10]
+	mi := &file_api_v1_instance_service_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1070,11 +1385,33 @@ const file_api_v1_instance_service_proto_rawDesc = "" +
 	"\x1cUpdateInstanceSettingRequest\x12<\n" +
 	"\asetting\x18\x01 \x01(\v2\x1d.memos.api.v1.InstanceSettingB\x03\xe0A\x02R\asetting\x12@\n" +
 	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x03\xe0A\x01R\n" +
-	"updateMask2\xdb\x03\n" +
+	"updateMask\"N\n" +
+	"(MigrateDatabaseAttachmentsToLocalRequest\x12\"\n" +
+	"\n" +
+	"batch_size\x18\x01 \x01(\x05B\x03\xe0A\x01R\tbatchSize\"\x91\x01\n" +
+	")MigrateDatabaseAttachmentsToLocalResponse\x12\x14\n" +
+	"\x05total\x18\x01 \x01(\x05R\x05total\x12\x1a\n" +
+	"\bmigrated\x18\x02 \x01(\x05R\bmigrated\x12\x18\n" +
+	"\askipped\x18\x03 \x01(\x05R\askipped\x12\x18\n" +
+	"\amessage\x18\x04 \x01(\tR\amessage\"N\n" +
+	"(MigrateLocalAttachmentsToDatabaseRequest\x12\"\n" +
+	"\n" +
+	"batch_size\x18\x01 \x01(\x05B\x03\xe0A\x01R\tbatchSize\"\x91\x01\n" +
+	")MigrateLocalAttachmentsToDatabaseResponse\x12\x14\n" +
+	"\x05total\x18\x01 \x01(\x05R\x05total\x12\x1a\n" +
+	"\bmigrated\x18\x02 \x01(\x05R\bmigrated\x12\x18\n" +
+	"\askipped\x18\x03 \x01(\x05R\askipped\x12\x18\n" +
+	"\amessage\x18\x04 \x01(\tR\amessage\"\x17\n" +
+	"\x15VacuumDatabaseRequest\"2\n" +
+	"\x16VacuumDatabaseResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage2\xa9\b\n" +
 	"\x0fInstanceService\x12~\n" +
 	"\x12GetInstanceProfile\x12'.memos.api.v1.GetInstanceProfileRequest\x1a\x1d.memos.api.v1.InstanceProfile\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/api/v1/instance/profile\x12\x8f\x01\n" +
 	"\x12GetInstanceSetting\x12'.memos.api.v1.GetInstanceSettingRequest\x1a\x1d.memos.api.v1.InstanceSetting\"1\xdaA\x04name\x82\xd3\xe4\x93\x02$\x12\"/api/v1/{name=instance/settings/*}\x12\xb5\x01\n" +
-	"\x15UpdateInstanceSetting\x12*.memos.api.v1.UpdateInstanceSettingRequest\x1a\x1d.memos.api.v1.InstanceSetting\"Q\xdaA\x13setting,update_mask\x82\xd3\xe4\x93\x025:\asetting2*/api/v1/{setting.name=instance/settings/*}B\xac\x01\n" +
+	"\x15UpdateInstanceSetting\x12*.memos.api.v1.UpdateInstanceSettingRequest\x1a\x1d.memos.api.v1.InstanceSetting\"Q\xdaA\x13setting,update_mask\x82\xd3\xe4\x93\x025:\asetting2*/api/v1/{setting.name=instance/settings/*}\x12\xdb\x01\n" +
+	"!MigrateDatabaseAttachmentsToLocal\x126.memos.api.v1.MigrateDatabaseAttachmentsToLocalRequest\x1a7.memos.api.v1.MigrateDatabaseAttachmentsToLocalResponse\"E\x82\xd3\xe4\x93\x02?:\x01*\":/api/v1/instance/storage:migrateDatabaseAttachmentsToLocal\x12\xdb\x01\n" +
+	"!MigrateLocalAttachmentsToDatabase\x126.memos.api.v1.MigrateLocalAttachmentsToDatabaseRequest\x1a7.memos.api.v1.MigrateLocalAttachmentsToDatabaseResponse\"E\x82\xd3\xe4\x93\x02?:\x01*\":/api/v1/instance/storage:migrateLocalAttachmentsToDatabase\x12\x8f\x01\n" +
+	"\x0eVacuumDatabase\x12#.memos.api.v1.VacuumDatabaseRequest\x1a$.memos.api.v1.VacuumDatabaseResponse\"2\x82\xd3\xe4\x93\x02,:\x01*\"'/api/v1/instance/storage:vacuumDatabaseB\xac\x01\n" +
 	"\x10com.memos.api.v1B\x14InstanceServiceProtoP\x01Z0github.com/usememos/memos/proto/gen/api/v1;apiv1\xa2\x02\x03MAX\xaa\x02\fMemos.Api.V1\xca\x02\fMemos\\Api\\V1\xe2\x02\x18Memos\\Api\\V1\\GPBMetadata\xea\x02\x0eMemos::Api::V1b\x06proto3"
 
 var (
@@ -1090,7 +1427,7 @@ func file_api_v1_instance_service_proto_rawDescGZIP() []byte {
 }
 
 var file_api_v1_instance_service_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_api_v1_instance_service_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_api_v1_instance_service_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_api_v1_instance_service_proto_goTypes = []any{
 	(InstanceSetting_Key)(0),                                       // 0: memos.api.v1.InstanceSetting.Key
 	(InstanceSetting_StorageSetting_StorageType)(0),                // 1: memos.api.v1.InstanceSetting.StorageSetting.StorageType
@@ -1100,35 +1437,47 @@ var file_api_v1_instance_service_proto_goTypes = []any{
 	(*InstanceSetting)(nil),                                        // 5: memos.api.v1.InstanceSetting
 	(*GetInstanceSettingRequest)(nil),                              // 6: memos.api.v1.GetInstanceSettingRequest
 	(*UpdateInstanceSettingRequest)(nil),                           // 7: memos.api.v1.UpdateInstanceSettingRequest
-	(*InstanceSetting_GeneralSetting)(nil),                         // 8: memos.api.v1.InstanceSetting.GeneralSetting
-	(*InstanceSetting_StorageSetting)(nil),                         // 9: memos.api.v1.InstanceSetting.StorageSetting
-	(*InstanceSetting_MemoRelatedSetting)(nil),                     // 10: memos.api.v1.InstanceSetting.MemoRelatedSetting
-	(*InstanceSetting_GeneralSetting_CustomProfile)(nil),           // 11: memos.api.v1.InstanceSetting.GeneralSetting.CustomProfile
-	(*InstanceSetting_StorageSetting_S3Config)(nil),                // 12: memos.api.v1.InstanceSetting.StorageSetting.S3Config
-	(*InstanceSetting_MemoRelatedSetting_MapSetting)(nil),          // 13: memos.api.v1.InstanceSetting.MemoRelatedSetting.MapSetting
-	(*User)(nil),                  // 14: memos.api.v1.User
-	(*fieldmaskpb.FieldMask)(nil), // 15: google.protobuf.FieldMask
+	(*MigrateDatabaseAttachmentsToLocalRequest)(nil),               // 8: memos.api.v1.MigrateDatabaseAttachmentsToLocalRequest
+	(*MigrateDatabaseAttachmentsToLocalResponse)(nil),              // 9: memos.api.v1.MigrateDatabaseAttachmentsToLocalResponse
+	(*MigrateLocalAttachmentsToDatabaseRequest)(nil),               // 10: memos.api.v1.MigrateLocalAttachmentsToDatabaseRequest
+	(*MigrateLocalAttachmentsToDatabaseResponse)(nil),              // 11: memos.api.v1.MigrateLocalAttachmentsToDatabaseResponse
+	(*VacuumDatabaseRequest)(nil),                                  // 12: memos.api.v1.VacuumDatabaseRequest
+	(*VacuumDatabaseResponse)(nil),                                 // 13: memos.api.v1.VacuumDatabaseResponse
+	(*InstanceSetting_GeneralSetting)(nil),                         // 14: memos.api.v1.InstanceSetting.GeneralSetting
+	(*InstanceSetting_StorageSetting)(nil),                         // 15: memos.api.v1.InstanceSetting.StorageSetting
+	(*InstanceSetting_MemoRelatedSetting)(nil),                     // 16: memos.api.v1.InstanceSetting.MemoRelatedSetting
+	(*InstanceSetting_GeneralSetting_CustomProfile)(nil),           // 17: memos.api.v1.InstanceSetting.GeneralSetting.CustomProfile
+	(*InstanceSetting_StorageSetting_S3Config)(nil),                // 18: memos.api.v1.InstanceSetting.StorageSetting.S3Config
+	(*InstanceSetting_MemoRelatedSetting_MapSetting)(nil),          // 19: memos.api.v1.InstanceSetting.MemoRelatedSetting.MapSetting
+	(*User)(nil),                  // 20: memos.api.v1.User
+	(*fieldmaskpb.FieldMask)(nil), // 21: google.protobuf.FieldMask
 }
 var file_api_v1_instance_service_proto_depIdxs = []int32{
-	14, // 0: memos.api.v1.InstanceProfile.admin:type_name -> memos.api.v1.User
-	8,  // 1: memos.api.v1.InstanceSetting.general_setting:type_name -> memos.api.v1.InstanceSetting.GeneralSetting
-	9,  // 2: memos.api.v1.InstanceSetting.storage_setting:type_name -> memos.api.v1.InstanceSetting.StorageSetting
-	10, // 3: memos.api.v1.InstanceSetting.memo_related_setting:type_name -> memos.api.v1.InstanceSetting.MemoRelatedSetting
+	20, // 0: memos.api.v1.InstanceProfile.admin:type_name -> memos.api.v1.User
+	14, // 1: memos.api.v1.InstanceSetting.general_setting:type_name -> memos.api.v1.InstanceSetting.GeneralSetting
+	15, // 2: memos.api.v1.InstanceSetting.storage_setting:type_name -> memos.api.v1.InstanceSetting.StorageSetting
+	16, // 3: memos.api.v1.InstanceSetting.memo_related_setting:type_name -> memos.api.v1.InstanceSetting.MemoRelatedSetting
 	5,  // 4: memos.api.v1.UpdateInstanceSettingRequest.setting:type_name -> memos.api.v1.InstanceSetting
-	15, // 5: memos.api.v1.UpdateInstanceSettingRequest.update_mask:type_name -> google.protobuf.FieldMask
-	11, // 6: memos.api.v1.InstanceSetting.GeneralSetting.custom_profile:type_name -> memos.api.v1.InstanceSetting.GeneralSetting.CustomProfile
+	21, // 5: memos.api.v1.UpdateInstanceSettingRequest.update_mask:type_name -> google.protobuf.FieldMask
+	17, // 6: memos.api.v1.InstanceSetting.GeneralSetting.custom_profile:type_name -> memos.api.v1.InstanceSetting.GeneralSetting.CustomProfile
 	1,  // 7: memos.api.v1.InstanceSetting.StorageSetting.storage_type:type_name -> memos.api.v1.InstanceSetting.StorageSetting.StorageType
-	12, // 8: memos.api.v1.InstanceSetting.StorageSetting.s3_config:type_name -> memos.api.v1.InstanceSetting.StorageSetting.S3Config
-	13, // 9: memos.api.v1.InstanceSetting.MemoRelatedSetting.map_setting:type_name -> memos.api.v1.InstanceSetting.MemoRelatedSetting.MapSetting
+	18, // 8: memos.api.v1.InstanceSetting.StorageSetting.s3_config:type_name -> memos.api.v1.InstanceSetting.StorageSetting.S3Config
+	19, // 9: memos.api.v1.InstanceSetting.MemoRelatedSetting.map_setting:type_name -> memos.api.v1.InstanceSetting.MemoRelatedSetting.MapSetting
 	2,  // 10: memos.api.v1.InstanceSetting.MemoRelatedSetting.MapSetting.provider:type_name -> memos.api.v1.InstanceSetting.MemoRelatedSetting.MapSetting.MapProvider
 	4,  // 11: memos.api.v1.InstanceService.GetInstanceProfile:input_type -> memos.api.v1.GetInstanceProfileRequest
 	6,  // 12: memos.api.v1.InstanceService.GetInstanceSetting:input_type -> memos.api.v1.GetInstanceSettingRequest
 	7,  // 13: memos.api.v1.InstanceService.UpdateInstanceSetting:input_type -> memos.api.v1.UpdateInstanceSettingRequest
-	3,  // 14: memos.api.v1.InstanceService.GetInstanceProfile:output_type -> memos.api.v1.InstanceProfile
-	5,  // 15: memos.api.v1.InstanceService.GetInstanceSetting:output_type -> memos.api.v1.InstanceSetting
-	5,  // 16: memos.api.v1.InstanceService.UpdateInstanceSetting:output_type -> memos.api.v1.InstanceSetting
-	14, // [14:17] is the sub-list for method output_type
-	11, // [11:14] is the sub-list for method input_type
+	8,  // 14: memos.api.v1.InstanceService.MigrateDatabaseAttachmentsToLocal:input_type -> memos.api.v1.MigrateDatabaseAttachmentsToLocalRequest
+	10, // 15: memos.api.v1.InstanceService.MigrateLocalAttachmentsToDatabase:input_type -> memos.api.v1.MigrateLocalAttachmentsToDatabaseRequest
+	12, // 16: memos.api.v1.InstanceService.VacuumDatabase:input_type -> memos.api.v1.VacuumDatabaseRequest
+	3,  // 17: memos.api.v1.InstanceService.GetInstanceProfile:output_type -> memos.api.v1.InstanceProfile
+	5,  // 18: memos.api.v1.InstanceService.GetInstanceSetting:output_type -> memos.api.v1.InstanceSetting
+	5,  // 19: memos.api.v1.InstanceService.UpdateInstanceSetting:output_type -> memos.api.v1.InstanceSetting
+	9,  // 20: memos.api.v1.InstanceService.MigrateDatabaseAttachmentsToLocal:output_type -> memos.api.v1.MigrateDatabaseAttachmentsToLocalResponse
+	11, // 21: memos.api.v1.InstanceService.MigrateLocalAttachmentsToDatabase:output_type -> memos.api.v1.MigrateLocalAttachmentsToDatabaseResponse
+	13, // 22: memos.api.v1.InstanceService.VacuumDatabase:output_type -> memos.api.v1.VacuumDatabaseResponse
+	17, // [17:23] is the sub-list for method output_type
+	11, // [11:17] is the sub-list for method input_type
 	11, // [11:11] is the sub-list for extension type_name
 	11, // [11:11] is the sub-list for extension extendee
 	0,  // [0:11] is the sub-list for field type_name
@@ -1151,7 +1500,7 @@ func file_api_v1_instance_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_instance_service_proto_rawDesc), len(file_api_v1_instance_service_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   11,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

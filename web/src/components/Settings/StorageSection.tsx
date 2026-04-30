@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
+import { instanceServiceClient } from "@/connect";
 import { useInstance } from "@/contexts/InstanceContext";
 import { handleError } from "@/lib/error";
 import {
@@ -23,10 +24,14 @@ import SettingGroup from "./SettingGroup";
 import SettingRow from "./SettingRow";
 import SettingSection from "./SettingSection";
 
+const ATTACHMENT_MIGRATION_BATCH_SIZE = 10;
+
 const StorageSection = () => {
   const t = useTranslate();
   const { storageSetting: originalSetting, updateSetting, fetchSetting } = useInstance();
   const [instanceStorageSetting, setInstanceStorageSetting] = useState<InstanceSetting_StorageSetting>(originalSetting);
+  const [isMigratingAttachments, setIsMigratingAttachments] = useState(false);
+  const [isVacuumingDatabase, setIsVacuumingDatabase] = useState(false);
 
   useEffect(() => {
     setInstanceStorageSetting(originalSetting);
@@ -149,6 +154,86 @@ const StorageSection = () => {
     }
   };
 
+  const shouldShowAttachmentMigration =
+    (originalSetting.storageType === InstanceSetting_StorageSetting_StorageType.DATABASE &&
+      instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.LOCAL) ||
+    (originalSetting.storageType === InstanceSetting_StorageSetting_StorageType.LOCAL &&
+      instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.DATABASE);
+
+  const migrationDirection =
+    originalSetting.storageType === InstanceSetting_StorageSetting_StorageType.LOCAL &&
+    instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.DATABASE
+      ? "local-to-database"
+      : "database-to-local";
+
+  const vacuumDatabase = async () => {
+    try {
+      setIsVacuumingDatabase(true);
+      await instanceServiceClient.vacuumDatabase({});
+      toast.success(t("setting.storage-section.vacuum-database-success"));
+    } catch (error: unknown) {
+      handleError(error, toast.error, { context: "Vacuum database" });
+    } finally {
+      setIsVacuumingDatabase(false);
+    }
+  };
+
+  const migrateAttachments = async () => {
+    let toastId: string | undefined;
+    try {
+      setIsMigratingAttachments(true);
+      toastId = toast.loading(t("setting.storage-section.migrating-attachments"));
+      if (!isEqual(originalSetting, instanceStorageSetting)) {
+        await updateSetting(
+          create(InstanceSettingSchema, {
+            name: `instance/settings/${InstanceSetting_Key[InstanceSetting_Key.STORAGE]}`,
+            value: {
+              case: "storageSetting",
+              value: instanceStorageSetting,
+            },
+          }),
+        );
+        await fetchSetting(InstanceSetting_Key.STORAGE);
+      }
+
+      let total = 0;
+      let migrated = 0;
+      while (true) {
+        const response =
+          migrationDirection === "local-to-database"
+            ? await instanceServiceClient.migrateLocalAttachmentsToDatabase({ batchSize: ATTACHMENT_MIGRATION_BATCH_SIZE })
+            : await instanceServiceClient.migrateDatabaseAttachmentsToLocal({ batchSize: ATTACHMENT_MIGRATION_BATCH_SIZE });
+        if (total === 0) {
+          total = response.total;
+        }
+        migrated += response.migrated;
+        toast.loading(
+          t("setting.storage-section.migrate-attachments-progress", {
+            migrated,
+            total,
+          }),
+          { id: toastId },
+        );
+        if (response.migrated === 0 || migrated >= total) {
+          break;
+        }
+      }
+      toast.success(
+        t("setting.storage-section.migrate-attachments-success", {
+          migrated,
+          total,
+        }),
+        { id: toastId },
+      );
+    } catch (error: unknown) {
+      handleError(error, (message) => toast.error(message, toastId ? { id: toastId } : undefined), {
+        context: "Migrate attachments",
+      });
+    } finally {
+      setIsMigratingAttachments(false);
+    }
+  };
+
   return (
     <SettingSection>
       <SettingGroup title={t("setting.storage-section.current-storage")}>
@@ -191,6 +276,36 @@ const StorageSection = () => {
               placeholder="assets/{timestamp}_{filename}"
               onChange={handleFilepathTemplateChanged}
             />
+          </SettingRow>
+        )}
+
+        {shouldShowAttachmentMigration && (
+          <SettingRow
+            label={t("setting.storage-section.migrate-attachments")}
+            description={
+              migrationDirection === "local-to-database"
+                ? t("setting.storage-section.migrate-attachments-to-database-description")
+                : t("setting.storage-section.migrate-attachments-to-local-description")
+            }
+          >
+            <Button variant="outline" disabled={!allowSaveStorageSetting || isMigratingAttachments} onClick={migrateAttachments}>
+              {isMigratingAttachments
+                ? t("setting.storage-section.migrating-attachments")
+                : t("setting.storage-section.migrate-attachments")}
+            </Button>
+          </SettingRow>
+        )}
+
+        {originalSetting.storageType === InstanceSetting_StorageSetting_StorageType.LOCAL && (
+          <SettingRow
+            label={t("setting.storage-section.vacuum-database")}
+            description={t("setting.storage-section.vacuum-database-description")}
+          >
+            <Button variant="outline" disabled={isVacuumingDatabase} onClick={vacuumDatabase}>
+              {isVacuumingDatabase
+                ? t("setting.storage-section.vacuuming-database")
+                : t("setting.storage-section.vacuum-database")}
+            </Button>
           </SettingRow>
         )}
       </SettingGroup>
@@ -236,7 +351,7 @@ const StorageSection = () => {
       )}
 
       <div className="w-full flex justify-end">
-        <Button disabled={!allowSaveStorageSetting} onClick={saveInstanceStorageSetting}>
+        <Button disabled={!allowSaveStorageSetting || isMigratingAttachments} onClick={saveInstanceStorageSetting}>
           {t("common.save")}
         </Button>
       </div>

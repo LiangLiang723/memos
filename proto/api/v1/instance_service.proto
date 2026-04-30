@@ -31,6 +31,30 @@ service InstanceService {
     };
     option (google.api.method_signature) = "setting,update_mask";
   }
+
+  // Migrates database-backed image attachments to the local file system.
+  rpc MigrateDatabaseAttachmentsToLocal(MigrateDatabaseAttachmentsToLocalRequest) returns (MigrateDatabaseAttachmentsToLocalResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/instance/storage:migrateDatabaseAttachmentsToLocal"
+      body: "*"
+    };
+  }
+
+  // Migrates local file system image attachments back to the database.
+  rpc MigrateLocalAttachmentsToDatabase(MigrateLocalAttachmentsToDatabaseRequest) returns (MigrateLocalAttachmentsToDatabaseResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/instance/storage:migrateLocalAttachmentsToDatabase"
+      body: "*"
+    };
+  }
+
+  // Vacuums the SQLite database to reclaim unused space after attachment migration.
+  rpc VacuumDatabase(VacuumDatabaseRequest) returns (VacuumDatabaseResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/instance/storage:vacuumDatabase"
+      body: "*"
+    };
+  }
 }
 
 // Instance profile message containing basic instance information.
@@ -197,4 +221,43 @@ message UpdateInstanceSettingRequest {
 
   // The list of fields to update.
   google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message MigrateDatabaseAttachmentsToLocalRequest {
+  // Optional. Maximum number of attachments to migrate in this request.
+  int32 batch_size = 1 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message MigrateDatabaseAttachmentsToLocalResponse {
+  // The number of database-backed image attachments found before migration.
+  int32 total = 1;
+  // The number of attachments migrated in this request.
+  int32 migrated = 2;
+  // The number of matching attachments that had already been migrated or could be skipped.
+  int32 skipped = 3;
+  // Human-readable status detail.
+  string message = 4;
+}
+
+message MigrateLocalAttachmentsToDatabaseRequest {
+  // Optional. Maximum number of attachments to migrate in this request.
+  int32 batch_size = 1 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message MigrateLocalAttachmentsToDatabaseResponse {
+  // The number of local image attachments found before migration.
+  int32 total = 1;
+  // The number of attachments migrated in this request.
+  int32 migrated = 2;
+  // The number of matching attachments that had already been migrated or could be skipped.
+  int32 skipped = 3;
+  // Human-readable status detail.
+  string message = 4;
+}
+
+message VacuumDatabaseRequest {}
+
+message VacuumDatabaseResponse {
+  // Human-readable status detail.
+  string message = 1;
 }

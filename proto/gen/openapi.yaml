@@ -457,6 +457,81 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/instance/storage:migrateDatabaseAttachmentsToLocal:
+        post:
+            tags:
+                - InstanceService
+            description: Migrates database-backed image attachments to the local file system.
+            operationId: InstanceService_MigrateDatabaseAttachmentsToLocal
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/MigrateDatabaseAttachmentsToLocalRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/MigrateDatabaseAttachmentsToLocalResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/instance/storage:migrateLocalAttachmentsToDatabase:
+        post:
+            tags:
+                - InstanceService
+            description: Migrates local file system image attachments back to the database.
+            operationId: InstanceService_MigrateLocalAttachmentsToDatabase
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/MigrateLocalAttachmentsToDatabaseRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/MigrateLocalAttachmentsToDatabaseResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/instance/storage:vacuumDatabase:
+        post:
+            tags:
+                - InstanceService
+            description: Vacuums the SQLite database to reclaim unused space after attachment migration.
+            operationId: InstanceService_VacuumDatabase
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/VacuumDatabaseRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/VacuumDatabaseResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/instance/{instance}/*:
         get:
             tags:
@@ -2482,6 +2557,56 @@ components:
                     type: string
                     description: The title extracted from the first H1 heading, if present.
             description: Computed properties of a memo.
+        MigrateDatabaseAttachmentsToLocalRequest:
+            type: object
+            properties:
+                batchSize:
+                    type: integer
+                    description: Optional. Maximum number of attachments to migrate in this request.
+                    format: int32
+        MigrateDatabaseAttachmentsToLocalResponse:
+            type: object
+            properties:
+                total:
+                    type: integer
+                    description: The number of database-backed image attachments found before migration.
+                    format: int32
+                migrated:
+                    type: integer
+                    description: The number of attachments migrated in this request.
+                    format: int32
+                skipped:
+                    type: integer
+                    description: The number of matching attachments that had already been migrated or could be skipped.
+                    format: int32
+                message:
+                    type: string
+                    description: Human-readable status detail.
+        MigrateLocalAttachmentsToDatabaseRequest:
+            type: object
+            properties:
+                batchSize:
+                    type: integer
+                    description: Optional. Maximum number of attachments to migrate in this request.
+                    format: int32
+        MigrateLocalAttachmentsToDatabaseResponse:
+            type: object
+            properties:
+                total:
+                    type: integer
+                    description: The number of local image attachments found before migration.
+                    format: int32
+                migrated:
+                    type: integer
+                    description: The number of attachments migrated in this request.
+                    format: int32
+                skipped:
+                    type: integer
+                    description: The number of matching attachments that had already been migrated or could be skipped.
+                    format: int32
+                message:
+                    type: string
+                    description: Human-readable status detail.
         OAuth2Config:
             type: object
             properties:
@@ -2906,6 +3031,15 @@ components:
                     description: The last update time of the webhook.
                     format: date-time
             description: UserWebhook represents a webhook owned by a user.
+        VacuumDatabaseRequest:
+            type: object
+            properties: {}
+        VacuumDatabaseResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: Human-readable status detail.
 tags:
     - name: ActivityService
     - name: AttachmentService
