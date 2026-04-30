@@ -417,6 +417,25 @@ func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *s
 			return errors.Wrap(err, "Failed to create directory")
 		}
 
+		// If the target path is already occupied by another attachment, append a timestamp
+		// to generate a unique path. This prevents two attachments from sharing a physical
+		// file, which would cause data loss when either one is deleted.
+		if _, statErr := os.Stat(osPath); statErr == nil {
+			ext := filepath.Ext(create.Filename)
+			base := strings.TrimSuffix(create.Filename, ext)
+			uniqueFilename := base + "_" + time.Now().Format("20060102150405") + ext
+			lastSlash := strings.LastIndex(internalPath, "/")
+			if lastSlash >= 0 {
+				internalPath = internalPath[:lastSlash+1] + uniqueFilename
+			} else {
+				internalPath = uniqueFilename
+			}
+			osPath = filepath.FromSlash(internalPath)
+			if !filepath.IsAbs(osPath) {
+				osPath = filepath.Join(profile.Data, osPath)
+			}
+		}
+
 		// Write the blob to the file.
 		if err := os.WriteFile(osPath, create.Blob, 0644); err != nil {
 			return errors.Wrap(err, "Failed to write file")

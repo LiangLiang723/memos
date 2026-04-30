@@ -262,6 +262,28 @@ func (s *APIV1Service) migrateDatabaseAttachmentToLocal(ctx context.Context, att
 	if !filepath.IsAbs(osPath) {
 		osPath = filepath.Join(s.Profile.Data, osPath)
 	}
+
+	// If the target path already exists on disk (another attachment was already migrated
+	// to this path because both have the same filename), generate a unique path using
+	// a timestamp to prevent sharing a physical file between two records.
+	// Sharing a file causes data loss: deleting either attachment would remove the shared
+	// file, silently breaking the other attachment's reference.
+	if _, err := os.Stat(osPath); err == nil {
+		ext := filepath.Ext(attachment.Filename)
+		base := strings.TrimSuffix(attachment.Filename, ext)
+		uniqueFilename := base + "_" + time.Now().Format("20060102150405") + ext
+		lastSlash := strings.LastIndex(internalPath, "/")
+		if lastSlash >= 0 {
+			internalPath = internalPath[:lastSlash+1] + uniqueFilename
+		} else {
+			internalPath = uniqueFilename
+		}
+		osPath = filepath.FromSlash(internalPath)
+		if !filepath.IsAbs(osPath) {
+			osPath = filepath.Join(s.Profile.Data, osPath)
+		}
+	}
+
 	created, err := writeAttachmentBlobForMigration(osPath, attachment.Blob)
 	if err != nil {
 		return err
