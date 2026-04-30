@@ -116,7 +116,7 @@ func (d *DB) ListAttachments(ctx context.Context, find *store.FindAttachment) ([
 		FROM attachment
 		LEFT JOIN memo ON attachment.memo_id = memo.id
 		WHERE %s
-		ORDER BY attachment.updated_ts DESC
+		ORDER BY attachment.created_ts DESC
 	`, strings.Join(fields, ", "), strings.Join(where, " AND "))
 	if find.Limit != nil {
 		query = fmt.Sprintf("%s LIMIT %d", query, *find.Limit)
