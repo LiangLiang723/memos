@@ -57,6 +57,9 @@ func (d *DB) ListAttachments(ctx context.Context, find *store.FindAttachment) ([
 	if v := find.FilenameSearch; v != nil {
 		where, args = append(where, "`attachment`.`filename` LIKE ?"), append(args, fmt.Sprintf("%%%s%%", *v))
 	}
+	if v := find.TypePrefix; v != nil {
+		where, args = append(where, "`attachment`.`type` LIKE ?"), append(args, *v+"%")
+	}
 	if v := find.MemoID; v != nil {
 		where, args = append(where, "`attachment`.`memo_id` = ?"), append(args, *v)
 	}
@@ -74,7 +77,12 @@ func (d *DB) ListAttachments(ctx context.Context, find *store.FindAttachment) ([
 		where = append(where, "`attachment`.`memo_id` IS NOT NULL")
 	}
 	if find.StorageType != nil {
-		where, args = append(where, "`attachment`.`storage_type` = ?"), append(args, find.StorageType.String())
+		if *find.StorageType == storepb.AttachmentStorageType_ATTACHMENT_STORAGE_TYPE_UNSPECIFIED {
+			where = append(where, "(`attachment`.`storage_type` = '' OR `attachment`.`storage_type` = ?)")
+			args = append(args, find.StorageType.String())
+		} else {
+			where, args = append(where, "`attachment`.`storage_type` = ?"), append(args, find.StorageType.String())
+		}
 	}
 
 	if len(find.Filters) > 0 {
@@ -182,8 +190,14 @@ func (d *DB) UpdateAttachment(ctx context.Context, update *store.UpdateAttachmen
 	if v := update.Filename; v != nil {
 		set, args = append(set, "`filename` = ?"), append(args, *v)
 	}
+	if v := update.Blob; v != nil {
+		set, args = append(set, "`blob` = ?"), append(args, *v)
+	}
 	if v := update.MemoID; v != nil {
 		set, args = append(set, "`memo_id` = ?"), append(args, *v)
+	}
+	if v := update.StorageType; v != nil {
+		set, args = append(set, "`storage_type` = ?"), append(args, v.String())
 	}
 	if v := update.Reference; v != nil {
 		set, args = append(set, "`reference` = ?"), append(args, *v)

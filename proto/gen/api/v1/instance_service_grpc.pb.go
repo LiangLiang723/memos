@@ -19,9 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	InstanceService_GetInstanceProfile_FullMethodName    = "/memos.api.v1.InstanceService/GetInstanceProfile"
-	InstanceService_GetInstanceSetting_FullMethodName    = "/memos.api.v1.InstanceService/GetInstanceSetting"
-	InstanceService_UpdateInstanceSetting_FullMethodName = "/memos.api.v1.InstanceService/UpdateInstanceSetting"
+	InstanceService_GetInstanceProfile_FullMethodName                = "/memos.api.v1.InstanceService/GetInstanceProfile"
+	InstanceService_GetInstanceSetting_FullMethodName                = "/memos.api.v1.InstanceService/GetInstanceSetting"
+	InstanceService_UpdateInstanceSetting_FullMethodName             = "/memos.api.v1.InstanceService/UpdateInstanceSetting"
+	InstanceService_MigrateDatabaseAttachmentsToLocal_FullMethodName = "/memos.api.v1.InstanceService/MigrateDatabaseAttachmentsToLocal"
+	InstanceService_MigrateLocalAttachmentsToDatabase_FullMethodName = "/memos.api.v1.InstanceService/MigrateLocalAttachmentsToDatabase"
+	InstanceService_VacuumDatabase_FullMethodName                    = "/memos.api.v1.InstanceService/VacuumDatabase"
 )
 
 // InstanceServiceClient is the client API for InstanceService service.
@@ -34,6 +37,12 @@ type InstanceServiceClient interface {
 	GetInstanceSetting(ctx context.Context, in *GetInstanceSettingRequest, opts ...grpc.CallOption) (*InstanceSetting, error)
 	// Updates an instance setting.
 	UpdateInstanceSetting(ctx context.Context, in *UpdateInstanceSettingRequest, opts ...grpc.CallOption) (*InstanceSetting, error)
+	// Migrates database-backed image attachments to the local file system.
+	MigrateDatabaseAttachmentsToLocal(ctx context.Context, in *MigrateDatabaseAttachmentsToLocalRequest, opts ...grpc.CallOption) (*MigrateDatabaseAttachmentsToLocalResponse, error)
+	// Migrates local file system image attachments back to the database.
+	MigrateLocalAttachmentsToDatabase(ctx context.Context, in *MigrateLocalAttachmentsToDatabaseRequest, opts ...grpc.CallOption) (*MigrateLocalAttachmentsToDatabaseResponse, error)
+	// Vacuums the SQLite database to reclaim unused space after attachment migration.
+	VacuumDatabase(ctx context.Context, in *VacuumDatabaseRequest, opts ...grpc.CallOption) (*VacuumDatabaseResponse, error)
 }
 
 type instanceServiceClient struct {
@@ -74,6 +83,36 @@ func (c *instanceServiceClient) UpdateInstanceSetting(ctx context.Context, in *U
 	return out, nil
 }
 
+func (c *instanceServiceClient) MigrateDatabaseAttachmentsToLocal(ctx context.Context, in *MigrateDatabaseAttachmentsToLocalRequest, opts ...grpc.CallOption) (*MigrateDatabaseAttachmentsToLocalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MigrateDatabaseAttachmentsToLocalResponse)
+	err := c.cc.Invoke(ctx, InstanceService_MigrateDatabaseAttachmentsToLocal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *instanceServiceClient) MigrateLocalAttachmentsToDatabase(ctx context.Context, in *MigrateLocalAttachmentsToDatabaseRequest, opts ...grpc.CallOption) (*MigrateLocalAttachmentsToDatabaseResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MigrateLocalAttachmentsToDatabaseResponse)
+	err := c.cc.Invoke(ctx, InstanceService_MigrateLocalAttachmentsToDatabase_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *instanceServiceClient) VacuumDatabase(ctx context.Context, in *VacuumDatabaseRequest, opts ...grpc.CallOption) (*VacuumDatabaseResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VacuumDatabaseResponse)
+	err := c.cc.Invoke(ctx, InstanceService_VacuumDatabase_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // InstanceServiceServer is the server API for InstanceService service.
 // All implementations must embed UnimplementedInstanceServiceServer
 // for forward compatibility.
@@ -84,6 +123,12 @@ type InstanceServiceServer interface {
 	GetInstanceSetting(context.Context, *GetInstanceSettingRequest) (*InstanceSetting, error)
 	// Updates an instance setting.
 	UpdateInstanceSetting(context.Context, *UpdateInstanceSettingRequest) (*InstanceSetting, error)
+	// Migrates database-backed image attachments to the local file system.
+	MigrateDatabaseAttachmentsToLocal(context.Context, *MigrateDatabaseAttachmentsToLocalRequest) (*MigrateDatabaseAttachmentsToLocalResponse, error)
+	// Migrates local file system image attachments back to the database.
+	MigrateLocalAttachmentsToDatabase(context.Context, *MigrateLocalAttachmentsToDatabaseRequest) (*MigrateLocalAttachmentsToDatabaseResponse, error)
+	// Vacuums the SQLite database to reclaim unused space after attachment migration.
+	VacuumDatabase(context.Context, *VacuumDatabaseRequest) (*VacuumDatabaseResponse, error)
 	mustEmbedUnimplementedInstanceServiceServer()
 }
 
@@ -102,6 +147,15 @@ func (UnimplementedInstanceServiceServer) GetInstanceSetting(context.Context, *G
 }
 func (UnimplementedInstanceServiceServer) UpdateInstanceSetting(context.Context, *UpdateInstanceSettingRequest) (*InstanceSetting, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateInstanceSetting not implemented")
+}
+func (UnimplementedInstanceServiceServer) MigrateDatabaseAttachmentsToLocal(context.Context, *MigrateDatabaseAttachmentsToLocalRequest) (*MigrateDatabaseAttachmentsToLocalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method MigrateDatabaseAttachmentsToLocal not implemented")
+}
+func (UnimplementedInstanceServiceServer) MigrateLocalAttachmentsToDatabase(context.Context, *MigrateLocalAttachmentsToDatabaseRequest) (*MigrateLocalAttachmentsToDatabaseResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method MigrateLocalAttachmentsToDatabase not implemented")
+}
+func (UnimplementedInstanceServiceServer) VacuumDatabase(context.Context, *VacuumDatabaseRequest) (*VacuumDatabaseResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method VacuumDatabase not implemented")
 }
 func (UnimplementedInstanceServiceServer) mustEmbedUnimplementedInstanceServiceServer() {}
 func (UnimplementedInstanceServiceServer) testEmbeddedByValue()                         {}
@@ -178,6 +232,60 @@ func _InstanceService_UpdateInstanceSetting_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _InstanceService_MigrateDatabaseAttachmentsToLocal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MigrateDatabaseAttachmentsToLocalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InstanceServiceServer).MigrateDatabaseAttachmentsToLocal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InstanceService_MigrateDatabaseAttachmentsToLocal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InstanceServiceServer).MigrateDatabaseAttachmentsToLocal(ctx, req.(*MigrateDatabaseAttachmentsToLocalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _InstanceService_MigrateLocalAttachmentsToDatabase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MigrateLocalAttachmentsToDatabaseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InstanceServiceServer).MigrateLocalAttachmentsToDatabase(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InstanceService_MigrateLocalAttachmentsToDatabase_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InstanceServiceServer).MigrateLocalAttachmentsToDatabase(ctx, req.(*MigrateLocalAttachmentsToDatabaseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _InstanceService_VacuumDatabase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VacuumDatabaseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InstanceServiceServer).VacuumDatabase(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InstanceService_VacuumDatabase_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InstanceServiceServer).VacuumDatabase(ctx, req.(*VacuumDatabaseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // InstanceService_ServiceDesc is the grpc.ServiceDesc for InstanceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -196,6 +304,18 @@ var InstanceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateInstanceSetting",
 			Handler:    _InstanceService_UpdateInstanceSetting_Handler,
+		},
+		{
+			MethodName: "MigrateDatabaseAttachmentsToLocal",
+			Handler:    _InstanceService_MigrateDatabaseAttachmentsToLocal_Handler,
+		},
+		{
+			MethodName: "MigrateLocalAttachmentsToDatabase",
+			Handler:    _InstanceService_MigrateLocalAttachmentsToDatabase_Handler,
+		},
+		{
+			MethodName: "VacuumDatabase",
+			Handler:    _InstanceService_VacuumDatabase_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

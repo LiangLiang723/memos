@@ -42,6 +42,15 @@ const (
 	// InstanceServiceUpdateInstanceSettingProcedure is the fully-qualified name of the
 	// InstanceService's UpdateInstanceSetting RPC.
 	InstanceServiceUpdateInstanceSettingProcedure = "/memos.api.v1.InstanceService/UpdateInstanceSetting"
+	// InstanceServiceMigrateDatabaseAttachmentsToLocalProcedure is the fully-qualified name of the
+	// InstanceService's MigrateDatabaseAttachmentsToLocal RPC.
+	InstanceServiceMigrateDatabaseAttachmentsToLocalProcedure = "/memos.api.v1.InstanceService/MigrateDatabaseAttachmentsToLocal"
+	// InstanceServiceMigrateLocalAttachmentsToDatabaseProcedure is the fully-qualified name of the
+	// InstanceService's MigrateLocalAttachmentsToDatabase RPC.
+	InstanceServiceMigrateLocalAttachmentsToDatabaseProcedure = "/memos.api.v1.InstanceService/MigrateLocalAttachmentsToDatabase"
+	// InstanceServiceVacuumDatabaseProcedure is the fully-qualified name of the InstanceService's
+	// VacuumDatabase RPC.
+	InstanceServiceVacuumDatabaseProcedure = "/memos.api.v1.InstanceService/VacuumDatabase"
 )
 
 // InstanceServiceClient is a client for the memos.api.v1.InstanceService service.
@@ -52,6 +61,12 @@ type InstanceServiceClient interface {
 	GetInstanceSetting(context.Context, *connect.Request[v1.GetInstanceSettingRequest]) (*connect.Response[v1.InstanceSetting], error)
 	// Updates an instance setting.
 	UpdateInstanceSetting(context.Context, *connect.Request[v1.UpdateInstanceSettingRequest]) (*connect.Response[v1.InstanceSetting], error)
+	// Migrates database-backed image attachments to the local file system.
+	MigrateDatabaseAttachmentsToLocal(context.Context, *connect.Request[v1.MigrateDatabaseAttachmentsToLocalRequest]) (*connect.Response[v1.MigrateDatabaseAttachmentsToLocalResponse], error)
+	// Migrates local file system image attachments back to the database.
+	MigrateLocalAttachmentsToDatabase(context.Context, *connect.Request[v1.MigrateLocalAttachmentsToDatabaseRequest]) (*connect.Response[v1.MigrateLocalAttachmentsToDatabaseResponse], error)
+	// Vacuums the SQLite database to reclaim unused space after attachment migration.
+	VacuumDatabase(context.Context, *connect.Request[v1.VacuumDatabaseRequest]) (*connect.Response[v1.VacuumDatabaseResponse], error)
 }
 
 // NewInstanceServiceClient constructs a client for the memos.api.v1.InstanceService service. By
@@ -83,14 +98,35 @@ func NewInstanceServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(instanceServiceMethods.ByName("UpdateInstanceSetting")),
 			connect.WithClientOptions(opts...),
 		),
+		migrateDatabaseAttachmentsToLocal: connect.NewClient[v1.MigrateDatabaseAttachmentsToLocalRequest, v1.MigrateDatabaseAttachmentsToLocalResponse](
+			httpClient,
+			baseURL+InstanceServiceMigrateDatabaseAttachmentsToLocalProcedure,
+			connect.WithSchema(instanceServiceMethods.ByName("MigrateDatabaseAttachmentsToLocal")),
+			connect.WithClientOptions(opts...),
+		),
+		migrateLocalAttachmentsToDatabase: connect.NewClient[v1.MigrateLocalAttachmentsToDatabaseRequest, v1.MigrateLocalAttachmentsToDatabaseResponse](
+			httpClient,
+			baseURL+InstanceServiceMigrateLocalAttachmentsToDatabaseProcedure,
+			connect.WithSchema(instanceServiceMethods.ByName("MigrateLocalAttachmentsToDatabase")),
+			connect.WithClientOptions(opts...),
+		),
+		vacuumDatabase: connect.NewClient[v1.VacuumDatabaseRequest, v1.VacuumDatabaseResponse](
+			httpClient,
+			baseURL+InstanceServiceVacuumDatabaseProcedure,
+			connect.WithSchema(instanceServiceMethods.ByName("VacuumDatabase")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // instanceServiceClient implements InstanceServiceClient.
 type instanceServiceClient struct {
-	getInstanceProfile    *connect.Client[v1.GetInstanceProfileRequest, v1.InstanceProfile]
-	getInstanceSetting    *connect.Client[v1.GetInstanceSettingRequest, v1.InstanceSetting]
-	updateInstanceSetting *connect.Client[v1.UpdateInstanceSettingRequest, v1.InstanceSetting]
+	getInstanceProfile                *connect.Client[v1.GetInstanceProfileRequest, v1.InstanceProfile]
+	getInstanceSetting                *connect.Client[v1.GetInstanceSettingRequest, v1.InstanceSetting]
+	updateInstanceSetting             *connect.Client[v1.UpdateInstanceSettingRequest, v1.InstanceSetting]
+	migrateDatabaseAttachmentsToLocal *connect.Client[v1.MigrateDatabaseAttachmentsToLocalRequest, v1.MigrateDatabaseAttachmentsToLocalResponse]
+	migrateLocalAttachmentsToDatabase *connect.Client[v1.MigrateLocalAttachmentsToDatabaseRequest, v1.MigrateLocalAttachmentsToDatabaseResponse]
+	vacuumDatabase                    *connect.Client[v1.VacuumDatabaseRequest, v1.VacuumDatabaseResponse]
 }
 
 // GetInstanceProfile calls memos.api.v1.InstanceService.GetInstanceProfile.
@@ -108,6 +144,23 @@ func (c *instanceServiceClient) UpdateInstanceSetting(ctx context.Context, req *
 	return c.updateInstanceSetting.CallUnary(ctx, req)
 }
 
+// MigrateDatabaseAttachmentsToLocal calls
+// memos.api.v1.InstanceService.MigrateDatabaseAttachmentsToLocal.
+func (c *instanceServiceClient) MigrateDatabaseAttachmentsToLocal(ctx context.Context, req *connect.Request[v1.MigrateDatabaseAttachmentsToLocalRequest]) (*connect.Response[v1.MigrateDatabaseAttachmentsToLocalResponse], error) {
+	return c.migrateDatabaseAttachmentsToLocal.CallUnary(ctx, req)
+}
+
+// MigrateLocalAttachmentsToDatabase calls
+// memos.api.v1.InstanceService.MigrateLocalAttachmentsToDatabase.
+func (c *instanceServiceClient) MigrateLocalAttachmentsToDatabase(ctx context.Context, req *connect.Request[v1.MigrateLocalAttachmentsToDatabaseRequest]) (*connect.Response[v1.MigrateLocalAttachmentsToDatabaseResponse], error) {
+	return c.migrateLocalAttachmentsToDatabase.CallUnary(ctx, req)
+}
+
+// VacuumDatabase calls memos.api.v1.InstanceService.VacuumDatabase.
+func (c *instanceServiceClient) VacuumDatabase(ctx context.Context, req *connect.Request[v1.VacuumDatabaseRequest]) (*connect.Response[v1.VacuumDatabaseResponse], error) {
+	return c.vacuumDatabase.CallUnary(ctx, req)
+}
+
 // InstanceServiceHandler is an implementation of the memos.api.v1.InstanceService service.
 type InstanceServiceHandler interface {
 	// Gets the instance profile.
@@ -116,6 +169,12 @@ type InstanceServiceHandler interface {
 	GetInstanceSetting(context.Context, *connect.Request[v1.GetInstanceSettingRequest]) (*connect.Response[v1.InstanceSetting], error)
 	// Updates an instance setting.
 	UpdateInstanceSetting(context.Context, *connect.Request[v1.UpdateInstanceSettingRequest]) (*connect.Response[v1.InstanceSetting], error)
+	// Migrates database-backed image attachments to the local file system.
+	MigrateDatabaseAttachmentsToLocal(context.Context, *connect.Request[v1.MigrateDatabaseAttachmentsToLocalRequest]) (*connect.Response[v1.MigrateDatabaseAttachmentsToLocalResponse], error)
+	// Migrates local file system image attachments back to the database.
+	MigrateLocalAttachmentsToDatabase(context.Context, *connect.Request[v1.MigrateLocalAttachmentsToDatabaseRequest]) (*connect.Response[v1.MigrateLocalAttachmentsToDatabaseResponse], error)
+	// Vacuums the SQLite database to reclaim unused space after attachment migration.
+	VacuumDatabase(context.Context, *connect.Request[v1.VacuumDatabaseRequest]) (*connect.Response[v1.VacuumDatabaseResponse], error)
 }
 
 // NewInstanceServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -143,6 +202,24 @@ func NewInstanceServiceHandler(svc InstanceServiceHandler, opts ...connect.Handl
 		connect.WithSchema(instanceServiceMethods.ByName("UpdateInstanceSetting")),
 		connect.WithHandlerOptions(opts...),
 	)
+	instanceServiceMigrateDatabaseAttachmentsToLocalHandler := connect.NewUnaryHandler(
+		InstanceServiceMigrateDatabaseAttachmentsToLocalProcedure,
+		svc.MigrateDatabaseAttachmentsToLocal,
+		connect.WithSchema(instanceServiceMethods.ByName("MigrateDatabaseAttachmentsToLocal")),
+		connect.WithHandlerOptions(opts...),
+	)
+	instanceServiceMigrateLocalAttachmentsToDatabaseHandler := connect.NewUnaryHandler(
+		InstanceServiceMigrateLocalAttachmentsToDatabaseProcedure,
+		svc.MigrateLocalAttachmentsToDatabase,
+		connect.WithSchema(instanceServiceMethods.ByName("MigrateLocalAttachmentsToDatabase")),
+		connect.WithHandlerOptions(opts...),
+	)
+	instanceServiceVacuumDatabaseHandler := connect.NewUnaryHandler(
+		InstanceServiceVacuumDatabaseProcedure,
+		svc.VacuumDatabase,
+		connect.WithSchema(instanceServiceMethods.ByName("VacuumDatabase")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/memos.api.v1.InstanceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case InstanceServiceGetInstanceProfileProcedure:
@@ -151,6 +228,12 @@ func NewInstanceServiceHandler(svc InstanceServiceHandler, opts ...connect.Handl
 			instanceServiceGetInstanceSettingHandler.ServeHTTP(w, r)
 		case InstanceServiceUpdateInstanceSettingProcedure:
 			instanceServiceUpdateInstanceSettingHandler.ServeHTTP(w, r)
+		case InstanceServiceMigrateDatabaseAttachmentsToLocalProcedure:
+			instanceServiceMigrateDatabaseAttachmentsToLocalHandler.ServeHTTP(w, r)
+		case InstanceServiceMigrateLocalAttachmentsToDatabaseProcedure:
+			instanceServiceMigrateLocalAttachmentsToDatabaseHandler.ServeHTTP(w, r)
+		case InstanceServiceVacuumDatabaseProcedure:
+			instanceServiceVacuumDatabaseHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -170,4 +253,16 @@ func (UnimplementedInstanceServiceHandler) GetInstanceSetting(context.Context, *
 
 func (UnimplementedInstanceServiceHandler) UpdateInstanceSetting(context.Context, *connect.Request[v1.UpdateInstanceSettingRequest]) (*connect.Response[v1.InstanceSetting], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.InstanceService.UpdateInstanceSetting is not implemented"))
+}
+
+func (UnimplementedInstanceServiceHandler) MigrateDatabaseAttachmentsToLocal(context.Context, *connect.Request[v1.MigrateDatabaseAttachmentsToLocalRequest]) (*connect.Response[v1.MigrateDatabaseAttachmentsToLocalResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.InstanceService.MigrateDatabaseAttachmentsToLocal is not implemented"))
+}
+
+func (UnimplementedInstanceServiceHandler) MigrateLocalAttachmentsToDatabase(context.Context, *connect.Request[v1.MigrateLocalAttachmentsToDatabaseRequest]) (*connect.Response[v1.MigrateLocalAttachmentsToDatabaseResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.InstanceService.MigrateLocalAttachmentsToDatabase is not implemented"))
+}
+
+func (UnimplementedInstanceServiceHandler) VacuumDatabase(context.Context, *connect.Request[v1.VacuumDatabaseRequest]) (*connect.Response[v1.VacuumDatabaseResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.InstanceService.VacuumDatabase is not implemented"))
 }

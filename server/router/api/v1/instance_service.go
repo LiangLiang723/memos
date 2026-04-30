@@ -1,8 +1,14 @@
 package v1
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"time"
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -12,6 +18,8 @@ import (
 	storepb "github.com/usememos/memos/proto/gen/store"
 	"github.com/usememos/memos/store"
 )
+
+const attachmentMigrationBatchSize = 10
 
 // GetInstanceProfile returns the instance profile.
 func (s *APIV1Service) GetInstanceProfile(ctx context.Context, _ *v1pb.GetInstanceProfileRequest) (*v1pb.InstanceProfile, error) {
@@ -102,6 +110,350 @@ func (s *APIV1Service) UpdateInstanceSetting(ctx context.Context, request *v1pb.
 	}
 
 	return convertInstanceSettingFromStore(instanceSetting), nil
+}
+
+// MigrateDatabaseAttachmentsToLocal migrates database-backed image attachments to local storage.
+func (s *APIV1Service) MigrateDatabaseAttachmentsToLocal(ctx context.Context, request *v1pb.MigrateDatabaseAttachmentsToLocalRequest) (*v1pb.MigrateDatabaseAttachmentsToLocalResponse, error) {
+	user, err := s.fetchCurrentUser(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
+	}
+	if user == nil {
+		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
+	}
+	if user.Role != store.RoleAdmin {
+		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	}
+
+	instanceStorageSetting, err := s.Store.GetInstanceStorageSetting(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get instance storage setting: %v", err)
+	}
+	if instanceStorageSetting.StorageType != storepb.InstanceStorageSetting_LOCAL {
+		return nil, status.Errorf(codes.FailedPrecondition, "storage type must be local before migrating attachments")
+	}
+	if instanceStorageSetting.FilepathTemplate == "" {
+		return nil, status.Errorf(codes.FailedPrecondition, "local filepath template is required")
+	}
+
+	databaseStorageType := storepb.AttachmentStorageType_ATTACHMENT_STORAGE_TYPE_UNSPECIFIED
+	total, err := s.countAttachments(ctx, databaseStorageType)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to count database attachments: %v", err)
+	}
+
+	response := &v1pb.MigrateDatabaseAttachmentsToLocalResponse{
+		Total: total,
+	}
+	limit := normalizeAttachmentMigrationBatchSize(request.BatchSize)
+	attachments, err := s.Store.ListAttachments(ctx, &store.FindAttachment{
+		GetBlob:     true,
+		StorageType: &databaseStorageType,
+		Limit:       &limit,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list database attachments: %v", err)
+	}
+
+	for _, attachment := range attachments {
+		if len(attachment.Blob) == 0 {
+			// Skip attachments with empty blobs rather than failing the whole batch.
+			continue
+		}
+		if err := s.migrateDatabaseAttachmentToLocal(ctx, attachment, instanceStorageSetting.FilepathTemplate); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to migrate attachment %s: %v", attachment.UID, err)
+		}
+		response.Migrated++
+	}
+	response.Message = fmt.Sprintf("Migrated %d of %d database attachments to local storage.", response.Migrated, response.Total)
+	return response, nil
+}
+
+// MigrateLocalAttachmentsToDatabase migrates local image attachments back to database storage.
+func (s *APIV1Service) MigrateLocalAttachmentsToDatabase(ctx context.Context, request *v1pb.MigrateLocalAttachmentsToDatabaseRequest) (*v1pb.MigrateLocalAttachmentsToDatabaseResponse, error) {
+	user, err := s.fetchCurrentUser(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
+	}
+	if user == nil {
+		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
+	}
+	if user.Role != store.RoleAdmin {
+		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	}
+
+	instanceStorageSetting, err := s.Store.GetInstanceStorageSetting(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get instance storage setting: %v", err)
+	}
+	if instanceStorageSetting.StorageType != storepb.InstanceStorageSetting_DATABASE {
+		return nil, status.Errorf(codes.FailedPrecondition, "storage type must be database before migrating attachments")
+	}
+
+	localStorageType := storepb.AttachmentStorageType_LOCAL
+	total, err := s.countAttachments(ctx, localStorageType)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to count local attachments: %v", err)
+	}
+
+	response := &v1pb.MigrateLocalAttachmentsToDatabaseResponse{
+		Total: total,
+	}
+	limit := normalizeAttachmentMigrationBatchSize(request.BatchSize)
+	attachments, err := s.Store.ListAttachments(ctx, &store.FindAttachment{
+		StorageType: &localStorageType,
+		Limit:       &limit,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list local attachments: %v", err)
+	}
+
+	for _, attachment := range attachments {
+		if attachment.Reference == "" {
+			return nil, status.Errorf(codes.FailedPrecondition, "attachment %s has no local file reference to migrate", attachment.UID)
+		}
+		if err := s.migrateLocalAttachmentToDatabase(ctx, attachment); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to migrate attachment %s: %v", attachment.UID, err)
+		}
+		response.Migrated++
+	}
+	response.Message = fmt.Sprintf("Migrated %d of %d local attachments to database storage.", response.Migrated, response.Total)
+	return response, nil
+}
+
+func normalizeAttachmentMigrationBatchSize(batchSize int32) int {
+	if batchSize <= 0 {
+		return attachmentMigrationBatchSize
+	}
+	if batchSize > 100 {
+		return 100
+	}
+	return int(batchSize)
+}
+
+func (s *APIV1Service) countAttachments(ctx context.Context, storageType storepb.AttachmentStorageType) (int32, error) {
+	total := int32(0)
+	limit := 100
+	offset := 0
+	for {
+		attachments, err := s.Store.ListAttachments(ctx, &store.FindAttachment{
+			StorageType: &storageType,
+			Limit:       &limit,
+			Offset:      &offset,
+		})
+		if err != nil {
+			return 0, err
+		}
+		if len(attachments) == 0 {
+			return total, nil
+		}
+		total += int32(len(attachments))
+		if len(attachments) < limit {
+			return total, nil
+		}
+		offset += len(attachments)
+	}
+}
+
+func (s *APIV1Service) migrateDatabaseAttachmentToLocal(ctx context.Context, attachment *store.Attachment, filepathTemplate string) error {
+	internalPath := buildMigrationAttachmentPath(filepathTemplate, attachment)
+
+	osPath := filepath.FromSlash(internalPath)
+	if !filepath.IsAbs(osPath) {
+		osPath = filepath.Join(s.Profile.Data, osPath)
+	}
+	created, err := writeAttachmentBlobForMigration(osPath, attachment.Blob)
+	if err != nil {
+		return err
+	}
+
+	emptyBlob := []byte{}
+	localStorageType := storepb.AttachmentStorageType_LOCAL
+	emptyPayload := &storepb.AttachmentPayload{}
+	now := time.Now().Unix()
+	if err := s.Store.UpdateAttachment(ctx, &store.UpdateAttachment{
+		ID:          attachment.ID,
+		UpdatedTs:   &now,
+		Blob:        &emptyBlob,
+		StorageType: &localStorageType,
+		Reference:   &internalPath,
+		Payload:     emptyPayload,
+	}); err != nil {
+		if created {
+			if removeErr := os.Remove(osPath); removeErr != nil && !os.IsNotExist(removeErr) {
+				return errors.Wrapf(err, "failed to update attachment record and rollback local file: %v", removeErr)
+			}
+		}
+		return errors.Wrap(err, "failed to update attachment record")
+	}
+	return nil
+}
+
+func buildMigrationAttachmentPath(filepathTemplate string, attachment *store.Attachment) string {
+	internalPath := filepathTemplate
+	if !strings.Contains(internalPath, "{filename}") {
+		internalPath = filepath.Join(internalPath, "{filename}")
+	}
+	t := time.Unix(attachment.CreatedTs, 0)
+	internalPath = fileKeyPattern.ReplaceAllStringFunc(internalPath, func(s string) string {
+		switch s {
+		case "{filename}":
+			return attachment.Filename
+		case "{timestamp}":
+			return fmt.Sprintf("%d", t.Unix())
+		case "{year}":
+			return fmt.Sprintf("%d", t.Year())
+		case "{month}":
+			return fmt.Sprintf("%02d", t.Month())
+		case "{day}":
+			return fmt.Sprintf("%02d", t.Day())
+		case "{hour}":
+			return fmt.Sprintf("%02d", t.Hour())
+		case "{minute}":
+			return fmt.Sprintf("%02d", t.Minute())
+		case "{second}":
+			return fmt.Sprintf("%02d", t.Second())
+		case "{uuid}":
+			return attachment.UID
+		default:
+			return s
+		}
+	})
+	return filepath.ToSlash(internalPath)
+}
+
+func (s *APIV1Service) migrateLocalAttachmentToDatabase(ctx context.Context, attachment *store.Attachment) error {
+	osPath := filepath.FromSlash(attachment.Reference)
+	if !filepath.IsAbs(osPath) {
+		osPath = filepath.Join(s.Profile.Data, osPath)
+	}
+	blob, err := os.ReadFile(osPath)
+	if err != nil {
+		return describeLocalStorageError(err, "read local attachment file")
+	}
+	if len(blob) == 0 {
+		return errors.Errorf("local attachment file is empty: %s", osPath)
+	}
+
+	emptyReference := ""
+	databaseStorageType := storepb.AttachmentStorageType_ATTACHMENT_STORAGE_TYPE_UNSPECIFIED
+	emptyPayload := &storepb.AttachmentPayload{}
+	now := time.Now().Unix()
+	if err := s.Store.UpdateAttachment(ctx, &store.UpdateAttachment{
+		ID:          attachment.ID,
+		UpdatedTs:   &now,
+		Blob:        &blob,
+		StorageType: &databaseStorageType,
+		Reference:   &emptyReference,
+		Payload:     emptyPayload,
+	}); err != nil {
+		return errors.Wrap(err, "failed to update attachment record")
+	}
+
+	if err := os.Remove(osPath); err != nil && !os.IsNotExist(err) {
+		if rollbackErr := s.rollbackLocalAttachmentMigration(ctx, attachment); rollbackErr != nil {
+			return errors.Wrapf(err, "failed to delete local file after database migration and rollback failed: %v", rollbackErr)
+		}
+		return describeLocalStorageError(err, "delete migrated local attachment file")
+	}
+	return nil
+}
+
+func (s *APIV1Service) rollbackLocalAttachmentMigration(ctx context.Context, attachment *store.Attachment) error {
+	emptyBlob := []byte{}
+	localStorageType := storepb.AttachmentStorageType_LOCAL
+	emptyPayload := &storepb.AttachmentPayload{}
+	now := time.Now().Unix()
+	return s.Store.UpdateAttachment(ctx, &store.UpdateAttachment{
+		ID:          attachment.ID,
+		UpdatedTs:   &now,
+		Blob:        &emptyBlob,
+		StorageType: &localStorageType,
+		Reference:   &attachment.Reference,
+		Payload:     emptyPayload,
+	})
+}
+
+func writeAttachmentBlobForMigration(path string, blob []byte) (bool, error) {
+	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+		return false, describeLocalStorageError(err, "create target directory")
+	}
+	if existing, err := os.ReadFile(path); err == nil {
+		if bytes.Equal(existing, blob) {
+			return false, nil
+		}
+		return false, errors.Errorf("target file already exists with different content: %s", path)
+	} else if !os.IsNotExist(err) {
+		return false, describeLocalStorageError(err, "check target file")
+	}
+
+	tmpFile, err := os.CreateTemp(filepath.Dir(path), ".memos-migration-*")
+	if err != nil {
+		return false, describeLocalStorageError(err, "create temporary file")
+	}
+	tmpPath := tmpFile.Name()
+	defer os.Remove(tmpPath)
+	if _, err := tmpFile.Write(blob); err != nil {
+		_ = tmpFile.Close()
+		return false, describeLocalStorageError(err, "write temporary file")
+	}
+	if err := tmpFile.Close(); err != nil {
+		return false, describeLocalStorageError(err, "close temporary file")
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return false, describeLocalStorageError(err, "move temporary file into place")
+	}
+	return true, nil
+}
+
+func describeLocalStorageError(err error, operation string) error {
+	if os.IsPermission(err) {
+		return errors.Wrap(err, operation+" failed because the server does not have permission to write the local storage path")
+	}
+	if errors.Is(err, syscall.ENOSPC) {
+		return errors.Wrap(err, operation+" failed because the disk is full")
+	}
+	return errors.Wrap(err, operation+" failed")
+}
+
+// VacuumDatabase reclaims unused SQLite disk space after attachment migration.
+func (s *APIV1Service) VacuumDatabase(ctx context.Context, _ *v1pb.VacuumDatabaseRequest) (*v1pb.VacuumDatabaseResponse, error) {
+	user, err := s.fetchCurrentUser(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
+	}
+	if user == nil {
+		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
+	}
+	if user.Role != store.RoleAdmin {
+		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	}
+	if err := s.compactDatabaseAfterAttachmentMigration(ctx); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to vacuum database: %v", err)
+	}
+	return &v1pb.VacuumDatabaseResponse{
+		Message: "Database vacuumed successfully.",
+	}, nil
+}
+
+func (s *APIV1Service) compactDatabaseAfterAttachmentMigration(ctx context.Context) error {
+	if s.Profile.Driver != "sqlite" {
+		return nil
+	}
+	db := s.Store.GetDriver().GetDB()
+	// Temporarily reduce the connection pool to a single connection so that
+	// VACUUM can acquire exclusive access and the subsequent WAL checkpoint
+	// can truncate the file. Restore the original limits afterwards.
+	origMax := db.Stats().MaxOpenConnections
+	db.SetMaxOpenConns(1)
+	defer db.SetMaxOpenConns(origMax)
+	if _, err := db.ExecContext(ctx, "VACUUM"); err != nil {
+		return errors.Wrap(err, "failed to vacuum sqlite database")
+	}
+	if _, err := db.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+		return errors.Wrap(err, "failed to truncate sqlite WAL")
+	}
+	return nil
 }
 
 func convertInstanceSettingFromStore(setting *storepb.InstanceSetting) *v1pb.InstanceSetting {
