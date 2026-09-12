@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -221,6 +222,74 @@ func (s *APIV1Service) MigrateLocalAttachmentsToDatabase(ctx context.Context, re
 	return response, nil
 }
 
+// MigrateLocalAttachmentsToTemplate reorganizes local image attachments using the current filepath template.
+func (s *APIV1Service) MigrateLocalAttachmentsToTemplate(ctx context.Context, request *v1pb.MigrateLocalAttachmentsToTemplateRequest) (*v1pb.MigrateLocalAttachmentsToTemplateResponse, error) {
+	user, err := s.fetchCurrentUser(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
+	}
+	if user == nil {
+		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
+	}
+	if user.Role != store.RoleAdmin {
+		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	}
+
+	instanceStorageSetting, err := s.Store.GetInstanceStorageSetting(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get instance storage setting: %v", err)
+	}
+	if instanceStorageSetting.StorageType != storepb.InstanceStorageSetting_LOCAL {
+		return nil, status.Errorf(codes.FailedPrecondition, "storage type must be local before reorganizing attachments")
+	}
+	if instanceStorageSetting.FilepathTemplate == "" {
+		return nil, status.Errorf(codes.FailedPrecondition, "local filepath template is required")
+	}
+
+	localStorageType := storepb.AttachmentStorageType_LOCAL
+	imageTypePrefix := "image/"
+	total, err := s.countImageAttachments(ctx, localStorageType, imageTypePrefix)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to count local image attachments: %v", err)
+	}
+
+	offset := int(request.Offset)
+	if offset < 0 {
+		offset = 0
+	}
+	limit := normalizeAttachmentMigrationBatchSize(request.BatchSize)
+	attachments, err := s.Store.ListAttachments(ctx, &store.FindAttachment{
+		StorageType: &localStorageType,
+		TypePrefix:  &imageTypePrefix,
+		Limit:       &limit,
+		Offset:      &offset,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list local image attachments: %v", err)
+	}
+
+	response := &v1pb.MigrateLocalAttachmentsToTemplateResponse{
+		Total:      total,
+		NextOffset: -1,
+	}
+	for _, attachment := range attachments {
+		targetReference := buildMigrationAttachmentPath(instanceStorageSetting.FilepathTemplate, attachment)
+		if sameAttachmentPath(s.Profile.Data, attachment.Reference, targetReference) {
+			response.Skipped++
+			continue
+		}
+		if err := s.reorganizeLocalAttachment(ctx, attachment, targetReference); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to reorganize attachment %s: %v", attachment.UID, err)
+		}
+		response.Migrated++
+	}
+	if len(attachments) == limit {
+		response.NextOffset = int32(offset + len(attachments))
+	}
+	response.Message = fmt.Sprintf("Reorganized %d of %d local image attachments.", response.Migrated, response.Total)
+	return response, nil
+}
+
 func normalizeAttachmentMigrationBatchSize(batchSize int32) int {
 	if batchSize <= 0 {
 		return attachmentMigrationBatchSize
@@ -238,6 +307,31 @@ func (s *APIV1Service) countAttachments(ctx context.Context, storageType storepb
 	for {
 		attachments, err := s.Store.ListAttachments(ctx, &store.FindAttachment{
 			StorageType: &storageType,
+			Limit:       &limit,
+			Offset:      &offset,
+		})
+		if err != nil {
+			return 0, err
+		}
+		if len(attachments) == 0 {
+			return total, nil
+		}
+		total += int32(len(attachments))
+		if len(attachments) < limit {
+			return total, nil
+		}
+		offset += len(attachments)
+	}
+}
+
+func (s *APIV1Service) countImageAttachments(ctx context.Context, storageType storepb.AttachmentStorageType, typePrefix string) (int32, error) {
+	total := int32(0)
+	limit := 100
+	offset := 0
+	for {
+		attachments, err := s.Store.ListAttachments(ctx, &store.FindAttachment{
+			StorageType: &storageType,
+			TypePrefix:  &typePrefix,
 			Limit:       &limit,
 			Offset:      &offset,
 		})
@@ -379,6 +473,139 @@ func (s *APIV1Service) migrateLocalAttachmentToDatabase(ctx context.Context, att
 		return describeLocalStorageError(err, "delete migrated local attachment file")
 	}
 	return nil
+}
+
+func (s *APIV1Service) reorganizeLocalAttachment(ctx context.Context, attachment *store.Attachment, targetReference string) error {
+	sourcePath := resolveAttachmentPath(s.Profile.Data, attachment.Reference)
+	if sameAttachmentPath(s.Profile.Data, attachment.Reference, targetReference) {
+		return nil
+	}
+
+	availableTargetReference, err := chooseLocalAttachmentTarget(s.Profile.Data, targetReference, attachment)
+	if err != nil {
+		return err
+	}
+	targetReference = availableTargetReference
+	targetPath := resolveAttachmentPath(s.Profile.Data, targetReference)
+
+	renamed, err := moveLocalAttachmentFile(sourcePath, targetPath)
+	if err != nil {
+		return err
+	}
+
+	if err := s.Store.UpdateAttachment(ctx, &store.UpdateAttachment{
+		ID:        attachment.ID,
+		Reference: &targetReference,
+	}); err != nil {
+		if renamed {
+			if rollbackErr := os.Rename(targetPath, sourcePath); rollbackErr != nil {
+				return errors.Wrapf(err, "failed to update attachment reference and rollback file move: %v", rollbackErr)
+			}
+		} else if rollbackErr := os.Remove(targetPath); rollbackErr != nil && !os.IsNotExist(rollbackErr) {
+			return errors.Wrapf(err, "failed to update attachment reference and rollback copied file: %v", rollbackErr)
+		}
+		return errors.Wrap(err, "failed to update attachment reference")
+	}
+
+	if renamed {
+		return nil
+	}
+	if err := os.Remove(sourcePath); err != nil && !os.IsNotExist(err) {
+		rollbackErr := s.Store.UpdateAttachment(ctx, &store.UpdateAttachment{
+			ID:        attachment.ID,
+			Reference: &attachment.Reference,
+		})
+		if rollbackErr != nil {
+			return errors.Wrapf(err, "failed to delete old attachment file and rollback reference: %v", rollbackErr)
+		}
+		if removeErr := os.Remove(targetPath); removeErr != nil && !os.IsNotExist(removeErr) {
+			return errors.Wrapf(err, "failed to delete old attachment file and clean up target file: %v", removeErr)
+		}
+		return describeLocalStorageError(err, "delete old attachment file")
+	}
+	return nil
+}
+
+func chooseLocalAttachmentTarget(dataDir, targetReference string, attachment *store.Attachment) (string, error) {
+	targetPath := resolveAttachmentPath(dataDir, targetReference)
+	if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+		return targetReference, nil
+	} else if err != nil {
+		return "", describeLocalStorageError(err, "check target attachment file")
+	}
+
+	targetPathValue := filepath.FromSlash(targetReference)
+	targetFilename := filepath.Base(targetPathValue)
+	extension := filepath.Ext(targetFilename)
+	uniqueFilename := strings.TrimSuffix(targetFilename, extension) + "_" + attachment.UID + extension
+	uniquePath := filepath.Join(filepath.Dir(targetPathValue), uniqueFilename)
+	if _, err := os.Stat(uniquePath); err == nil {
+		return "", errors.Errorf("target file and collision-safe target file already exist: %s", targetPath)
+	} else if !os.IsNotExist(err) {
+		return "", describeLocalStorageError(err, "check collision-safe target attachment file")
+	}
+	return filepath.ToSlash(uniquePath), nil
+}
+
+func moveLocalAttachmentFile(sourcePath, targetPath string) (bool, error) {
+	if err := os.MkdirAll(filepath.Dir(targetPath), os.ModePerm); err != nil {
+		return false, describeLocalStorageError(err, "create target directory")
+	}
+	if _, err := os.Stat(targetPath); err == nil {
+		return false, errors.Errorf("target file already exists: %s", targetPath)
+	} else if !os.IsNotExist(err) {
+		return false, describeLocalStorageError(err, "check target file")
+	}
+
+	if err := os.Rename(sourcePath, targetPath); err == nil {
+		return true, nil
+	} else if !errors.Is(err, syscall.EXDEV) {
+		return false, describeLocalStorageError(err, "move attachment file")
+	}
+
+	sourceFile, err := os.Open(sourcePath)
+	if err != nil {
+		return false, describeLocalStorageError(err, "open attachment file")
+	}
+	defer sourceFile.Close()
+
+	tmpFile, err := os.CreateTemp(filepath.Dir(targetPath), ".memos-reorganize-*")
+	if err != nil {
+		return false, describeLocalStorageError(err, "create temporary attachment file")
+	}
+	tmpPath := tmpFile.Name()
+	defer os.Remove(tmpPath)
+	if _, err := io.Copy(tmpFile, sourceFile); err != nil {
+		_ = tmpFile.Close()
+		return false, describeLocalStorageError(err, "copy attachment file")
+	}
+	if err := tmpFile.Close(); err != nil {
+		return false, describeLocalStorageError(err, "close temporary attachment file")
+	}
+	if err := os.Rename(tmpPath, targetPath); err != nil {
+		return false, describeLocalStorageError(err, "move copied attachment file into place")
+	}
+	return false, nil
+}
+
+func resolveAttachmentPath(dataDir, reference string) string {
+	path := filepath.FromSlash(reference)
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(dataDir, path)
+	}
+	if absolutePath, err := filepath.Abs(path); err == nil {
+		path = absolutePath
+	}
+	return filepath.Clean(path)
+}
+
+func sameAttachmentPath(dataDir, leftReference, rightReference string) bool {
+	leftPath := resolveAttachmentPath(dataDir, leftReference)
+	rightPath := resolveAttachmentPath(dataDir, rightReference)
+	if leftPath == rightPath {
+		return true
+	}
+	return os.PathSeparator == '\\' && strings.EqualFold(leftPath, rightPath)
 }
 
 func (s *APIV1Service) rollbackLocalAttachmentMigration(ctx context.Context, attachment *store.Attachment) error {

@@ -375,6 +375,8 @@
       "migrate-attachments-to-database-description": "將本機圖片附件檔案遷回資料庫，並刪除已遷移的本機檔案。",
       "migrate-attachments-to-local-description": "使用目前檔案路徑範本，將資料庫中的圖片附件遷移到本機檔案系統。",
       "migrating-attachments": "正在遷移...",
+      "reorganize-attachments": "整理附件",
+      "reorganize-attachments-description": "依照目前檔案路徑範本，將既有的本機圖片附件移動到對應資料夾。",
       "path": "儲存空間路徑",
       "path-description": "您可以使用與本機儲存空間相同的動態變數，如 {filename}",
       "path-placeholder": "自訂路徑",

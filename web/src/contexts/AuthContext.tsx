@@ -1,5 +1,6 @@
+import { Code, ConnectError } from "@connectrpc/connect";
 import { useQueryClient } from "@tanstack/react-query";
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { clearAccessToken, hasStoredToken } from "@/auth-state";
 import { authServiceClient, shortcutServiceClient, userServiceClient } from "@/connect";
 import { userKeys } from "@/hooks/useUserQueries";
@@ -22,6 +23,18 @@ interface AuthContextValue extends AuthState {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+function isTransientNetworkError(error: unknown): boolean {
+  if (!navigator.onLine) return true;
+  if (!(error instanceof ConnectError)) return true;
+  return (
+    error.code === Code.Canceled ||
+    error.code === Code.DeadlineExceeded ||
+    error.code === Code.Internal ||
+    error.code === Code.Unavailable ||
+    error.code === Code.Unknown
+  );
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -97,6 +110,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData(userKeys.detail(currentUser.name), currentUser);
     } catch (error) {
       console.error("Failed to initialize auth:", error);
+      if (isTransientNetworkError(error)) {
+        setState((prev) => ({
+          ...prev,
+          isInitialized: true,
+          isLoading: false,
+        }));
+        return;
+      }
       clearAccessToken();
       setState({
         currentUser: undefined,
@@ -127,6 +148,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.clear();
     }
   }, [queryClient]);
+
+  useEffect(() => {
+    if (!state.isInitialized || state.currentUser || !hasStoredToken()) return;
+
+    const retryInitialize = () => {
+      if (navigator.onLine) {
+        initialize();
+      }
+    };
+
+    window.addEventListener("online", retryInitialize);
+    return () => window.removeEventListener("online", retryInitialize);
+  }, [initialize, state.currentUser, state.isInitialized]);
 
   const refetchSettings = useCallback(async () => {
     // Use functional setState to get current user without including state in dependencies

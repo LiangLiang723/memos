@@ -395,6 +395,8 @@
       "migrate-attachments-to-database-description": "将本地图片附件文件迁回数据库，并删除已迁移的本地文件。",
       "migrate-attachments-to-local-description": "使用当前文件路径模板，将数据库中的图片附件迁移到本地文件系统。",
       "migrating-attachments": "正在迁移...",
+      "reorganize-attachments": "整理附件",
+      "reorganize-attachments-description": "按照当前文件路径模板，将已有的本地图片附件移动到对应目录。",
       "vacuum-database": "压缩数据库",
       "vacuum-database-description": "将附件迁移到本地存储后，清理 SQLite 数据库中的无用空间以减小文件大小。",
       "vacuuming-database": "正在压缩...",

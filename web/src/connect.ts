@@ -112,6 +112,18 @@ function shouldHandleUnauthenticatedRetry(error: unknown, isRetryAttempt: boolea
   return true;
 }
 
+function isTransientNetworkError(error: unknown): boolean {
+  if (!navigator.onLine) return true;
+  if (!(error instanceof ConnectError)) return true;
+  return (
+    error.code === Code.Canceled ||
+    error.code === Code.DeadlineExceeded ||
+    error.code === Code.Internal ||
+    error.code === Code.Unavailable ||
+    error.code === Code.Unknown
+  );
+}
+
 export async function refreshAndGetAccessToken(): Promise<string> {
   await refreshAccessToken();
   const token = getAccessToken();
@@ -125,12 +137,7 @@ export async function getRequestToken(): Promise<string | null> {
   let token = getAccessToken();
   if (!token) {
     if (!hasStoredToken()) return null;
-    try {
-      token = await refreshAndGetAccessToken();
-    } catch {
-      return null;
-    }
-    return token;
+    return refreshAndGetAccessToken();
   }
 
   // Preflight refresh: avoid sending requests with expired access tokens.
@@ -171,6 +178,9 @@ const authInterceptor: Interceptor = (next) => async (req) => {
       req.header.set(RETRY_HEADER, RETRY_HEADER_VALUE);
       return await next(req);
     } catch (refreshError) {
+      if (isTransientNetworkError(refreshError)) {
+        throw refreshError;
+      }
       redirectOnAuthFailure();
       throw refreshError;
     }
