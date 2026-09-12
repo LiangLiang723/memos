@@ -222,7 +222,7 @@ func (s *APIV1Service) MigrateLocalAttachmentsToDatabase(ctx context.Context, re
 	return response, nil
 }
 
-// MigrateLocalAttachmentsToTemplate reorganizes local image attachments using the current filepath template.
+// MigrateLocalAttachmentsToTemplate reorganizes all local attachments using the current filepath template.
 func (s *APIV1Service) MigrateLocalAttachmentsToTemplate(ctx context.Context, request *v1pb.MigrateLocalAttachmentsToTemplateRequest) (*v1pb.MigrateLocalAttachmentsToTemplateResponse, error) {
 	user, err := s.fetchCurrentUser(ctx)
 	if err != nil {
@@ -247,8 +247,7 @@ func (s *APIV1Service) MigrateLocalAttachmentsToTemplate(ctx context.Context, re
 	}
 
 	localStorageType := storepb.AttachmentStorageType_LOCAL
-	imageTypePrefix := "image/"
-	total, err := s.countImageAttachments(ctx, localStorageType, imageTypePrefix)
+	total, err := s.countAttachments(ctx, localStorageType)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to count local image attachments: %v", err)
 	}
@@ -260,7 +259,6 @@ func (s *APIV1Service) MigrateLocalAttachmentsToTemplate(ctx context.Context, re
 	limit := normalizeAttachmentMigrationBatchSize(request.BatchSize)
 	attachments, err := s.Store.ListAttachments(ctx, &store.FindAttachment{
 		StorageType: &localStorageType,
-		TypePrefix:  &imageTypePrefix,
 		Limit:       &limit,
 		Offset:      &offset,
 	})
@@ -273,6 +271,9 @@ func (s *APIV1Service) MigrateLocalAttachmentsToTemplate(ctx context.Context, re
 		NextOffset: -1,
 	}
 	for _, attachment := range attachments {
+		if attachment.Reference == "" {
+			return nil, status.Errorf(codes.FailedPrecondition, "attachment %s has no local file reference to reorganize", attachment.UID)
+		}
 		targetReference := buildMigrationAttachmentPath(instanceStorageSetting.FilepathTemplate, attachment)
 		if sameAttachmentPath(s.Profile.Data, attachment.Reference, targetReference) {
 			response.Skipped++
@@ -286,7 +287,7 @@ func (s *APIV1Service) MigrateLocalAttachmentsToTemplate(ctx context.Context, re
 	if len(attachments) == limit {
 		response.NextOffset = int32(offset + len(attachments))
 	}
-	response.Message = fmt.Sprintf("Reorganized %d of %d local image attachments.", response.Migrated, response.Total)
+	response.Message = fmt.Sprintf("Reorganized %d of %d local attachments.", response.Migrated, response.Total)
 	return response, nil
 }
 
@@ -307,31 +308,6 @@ func (s *APIV1Service) countAttachments(ctx context.Context, storageType storepb
 	for {
 		attachments, err := s.Store.ListAttachments(ctx, &store.FindAttachment{
 			StorageType: &storageType,
-			Limit:       &limit,
-			Offset:      &offset,
-		})
-		if err != nil {
-			return 0, err
-		}
-		if len(attachments) == 0 {
-			return total, nil
-		}
-		total += int32(len(attachments))
-		if len(attachments) < limit {
-			return total, nil
-		}
-		offset += len(attachments)
-	}
-}
-
-func (s *APIV1Service) countImageAttachments(ctx context.Context, storageType storepb.AttachmentStorageType, typePrefix string) (int32, error) {
-	total := int32(0)
-	limit := 100
-	offset := 0
-	for {
-		attachments, err := s.Store.ListAttachments(ctx, &store.FindAttachment{
-			StorageType: &storageType,
-			TypePrefix:  &typePrefix,
 			Limit:       &limit,
 			Offset:      &offset,
 		})

@@ -1,8 +1,8 @@
 import * as exifr from "exifr";
 import { LatLng } from "leaflet";
-import { InfoIcon, PlayIcon, Volume2, VolumeX, X } from "lucide-react";
-import { flushSync } from "react-dom";
+import { DownloadIcon, InfoIcon, PlayIcon, Volume2, VolumeX, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { LocationPicker } from "@/components/map";
 import { resolveLocationLabel } from "@/components/map/geocoding";
 import { getMapSettingWithDefaults } from "@/components/map/map-setting";
@@ -10,12 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useInstance } from "@/contexts/InstanceContext";
 import { isAnimatedImageMimeType } from "@/utils/attachment";
+import { useTranslate } from "@/utils/i18n";
 
 export interface PreviewMediaItem {
   url: string;
   type: "image" | "video";
   mimeType?: string;
   thumbnailUrl?: string;
+  filename?: string;
 }
 
 interface Props {
@@ -43,6 +45,7 @@ interface LivePhotoDetection {
 }
 
 function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, initialIndex = 0 }: Props) {
+  const t = useTranslate();
   const { memoRelatedSetting } = useInstance();
   const mapSetting = getMapSettingWithDefaults(memoRelatedSetting.mapSetting);
   const MAX_SCALE = 5;
@@ -551,10 +554,8 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
       const media = target as HTMLImageElement | HTMLVideoElement;
 
       // Extract natural dimensions depending on the element type
-      const naturalWidth =
-        target.tagName === "IMG" ? (media as HTMLImageElement).naturalWidth : (media as HTMLVideoElement).videoWidth;
-      const naturalHeight =
-        target.tagName === "IMG" ? (media as HTMLImageElement).naturalHeight : (media as HTMLVideoElement).videoHeight;
+      const naturalWidth = target.tagName === "IMG" ? (media as HTMLImageElement).naturalWidth : (media as HTMLVideoElement).videoWidth;
+      const naturalHeight = target.tagName === "IMG" ? (media as HTMLImageElement).naturalHeight : (media as HTMLVideoElement).videoHeight;
 
       if (frame && naturalWidth && naturalHeight) {
         const frameRect = frame.getBoundingClientRect();
@@ -602,6 +603,32 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
     if (!currentMedia || currentMedia.type !== "image") return;
     if (!livePhoto.canPlay) return;
     setImageDisplayMode("motion-video");
+  };
+
+  const getDownloadFilename = (media: PreviewMediaItem): string => {
+    if (media.filename) return media.filename;
+
+    try {
+      const pathname = new URL(media.url, window.location.origin).pathname;
+      const filename = pathname.split("/").pop();
+      if (filename) return decodeURIComponent(filename);
+    } catch {
+      // Fall back to a generic name when the preview URL is not parseable.
+    }
+
+    return media.type === "video" ? "video" : "image";
+  };
+
+  const handleDownload = () => {
+    if (!currentMedia) return;
+
+    const link = document.createElement("a");
+    link.href = currentMedia.url;
+    link.download = getDownloadFilename(currentMedia);
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   };
 
   if (!resolvedMediaItems.length) return null;
@@ -660,17 +687,31 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
           </div>
 
           {/* 右侧：关闭按钮 */}
-          <div className="flex-1 flex justify-end pointer-events-auto">
+          <div className="flex-1 flex justify-end items-center gap-2 pointer-events-auto">
             <Button
               onClick={handleClose}
               variant="secondary"
               size="icon"
               className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm"
-              aria-label="关闭图片预览"
+              aria-label={t("common.close")}
+              title={t("common.close")}
             >
               <X className="h-4 w-4 text-popover-foreground" />
             </Button>
           </div>
+        </div>
+
+        <div className="fixed bottom-4 left-4 z-50">
+          <Button
+            onClick={handleDownload}
+            variant="secondary"
+            size="icon"
+            className="rounded-full bg-popover/20 hover:bg-popover/30 border-border/20 backdrop-blur-sm"
+            aria-label={t("common.download")}
+            title={t("common.download")}
+          >
+            <DownloadIcon className="h-4 w-4 text-popover-foreground" />
+          </Button>
         </div>
 
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
@@ -843,11 +884,13 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
                 const t = e.touches[0];
                 const dx = touchStartRef.current ? t.clientX - touchStartRef.current.x : 0;
                 const dy = touchStartRef.current ? t.clientY - touchStartRef.current.y : 0;
-                
+
                 if (scale > 1) {
                   if (isCurrentVideo) return;
-                  if ((swipeEdgeRef.current === "left" && dx > 0 && Math.abs(dx) > Math.abs(dy)) || 
-                      (swipeEdgeRef.current === "right" && dx < 0 && Math.abs(dx) > Math.abs(dy))) {
+                  if (
+                    (swipeEdgeRef.current === "left" && dx > 0 && Math.abs(dx) > Math.abs(dy)) ||
+                    (swipeEdgeRef.current === "right" && dx < 0 && Math.abs(dx) > Math.abs(dy))
+                  ) {
                     let sOffset = dx;
                     const cWidth = frameRef.current?.clientWidth || window.innerWidth;
                     if (sOffset > cWidth + 11) sOffset = cWidth + 11;
@@ -892,7 +935,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
                   const isLongSwipe = Math.abs(dx) > threshold;
                   const containerWidth = frameRef.current?.clientWidth || window.innerWidth;
                   const GAP = 11;
-                  
+
                   // Clamp dx so it doesn't overshoot into next-next image bounds
                   let clampedDx = dx;
                   if (clampedDx > containerWidth + GAP) clampedDx = containerWidth + GAP;
@@ -911,12 +954,12 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
                         frameRef.current?.getBoundingClientRect(); // force layout
 
                         requestAnimationFrame(() => {
-                           setIsDragging(false);
-                           setSwipeOffset(0);
+                          setIsDragging(false);
+                          setSwipeOffset(0);
                         });
                       } else {
-                         setIsDragging(false);
-                         setSwipeOffset(0);
+                        setIsDragging(false);
+                        setSwipeOffset(0);
                       }
                     } else if (dx < 0 && (swipeEdgeRef.current === "right" || swipeEdgeRef.current === "both")) {
                       if (safeIndex < resolvedMediaItems.length - 1) {
@@ -930,16 +973,16 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
                         frameRef.current?.getBoundingClientRect(); // force layout
 
                         requestAnimationFrame(() => {
-                           setIsDragging(false);
-                           setSwipeOffset(0);
+                          setIsDragging(false);
+                          setSwipeOffset(0);
                         });
                       } else {
-                         setIsDragging(false);
-                         setSwipeOffset(0);
-                      }
-                    } else {
                         setIsDragging(false);
                         setSwipeOffset(0);
+                      }
+                    } else {
+                      setIsDragging(false);
+                      setSwipeOffset(0);
                     }
                   } else {
                     setIsDragging(false);
@@ -961,15 +1004,15 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
               className={`w-full h-full flex items-center justify-center`}
               style={{
                 transform: `translateX(${swipeOffset}px)`,
-                transition: isDragging ? "none" : "transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)"
+                transition: isDragging ? "none" : "transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)",
               }}
             >
               {resolvedMediaItems.map((media, i) => {
                 if (Math.abs(i - safeIndex) > 1) return null; // Render only +/- 1
-                  if (i === safeIndex - 1 && swipeOffset < 0) return null;
-                  if (i === safeIndex + 1 && swipeOffset > 0) return null;
+                if (i === safeIndex - 1 && swipeOffset < 0) return null;
+                if (i === safeIndex + 1 && swipeOffset > 0) return null;
 
-                  const isCurrent = i === safeIndex;
+                const isCurrent = i === safeIndex;
                 let hOffset = "0px";
                 if (i < safeIndex) hOffset = `calc(-100% - 13px)`;
                 if (i > safeIndex) hOffset = `calc(100% + 13px)`;
@@ -985,17 +1028,19 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
                             transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
                             transformOrigin: "center center",
                             transition: isDragging ? "transform 0s" : "transform 0.3s ease-out",
-                            pointerEvents: "auto"
+                            pointerEvents: "auto",
                           }
                         : {
                             left: hOffset,
-                            pointerEvents: "none"
+                            pointerEvents: "none",
                           }
                     }
                   >
                     {media.type === "video" ? (
                       <video
-                        ref={(el) => { if (el && !isCurrent) el.pause(); }}
+                        ref={(el) => {
+                          if (el && !isCurrent) el.pause();
+                        }}
                         key={`vid-${media.url}`}
                         src={media.url ? media.url + "#t=0.1" : undefined}
                         controls={isCurrent}
@@ -1024,10 +1069,13 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
                             }
                           }}
                         />
-                        {isCurrent && imageDisplayMode === "motion-video" && (
-                          livePhoto.motionVideoUrl ? (
+                        {isCurrent &&
+                          imageDisplayMode === "motion-video" &&
+                          (livePhoto.motionVideoUrl ? (
                             <video
-                              ref={(el) => { if (el && !isCurrent) el.pause(); }}
+                              ref={(el) => {
+                                if (el && !isCurrent) el.pause();
+                              }}
                               src={livePhoto.motionVideoUrl}
                               autoPlay
                               muted={isLivePhotoMuted}
@@ -1045,8 +1093,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
                               loading="eager"
                               decoding="async"
                             />
-                          )
-                        )}
+                          ))}
                       </>
                     )}
                   </div>
@@ -1055,7 +1102,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], mediaItems, init
             </div>
           </div>
         </div>
-        
+
         <div id="image-preview-description" className="sr-only">
           媒体预览对话框。按 Escape 关闭，或点击媒体外区域关闭。
         </div>
