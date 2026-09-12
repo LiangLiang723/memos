@@ -130,7 +130,7 @@ const AttachmentList = ({ attachments }: AttachmentListProps) => {
   const t = useTranslate();
   const [previewImage, setPreviewImage] = useState<{
     open: boolean;
-    mediaItems: { url: string; type: "image" | "video"; mimeType?: string; thumbnailUrl?: string }[];
+    mediaItems: { url: string; type: "image" | "video"; mimeType?: string; thumbnailUrl?: string; filename?: string }[];
     index: number;
   }>({
     open: false,
@@ -146,6 +146,7 @@ const AttachmentList = ({ attachments }: AttachmentListProps) => {
         type: isVideoAttachment(attachment) ? ("video" as const) : ("image" as const),
         mimeType: attachment.type,
         thumbnailUrl: getAttachmentThumbnailUrl(attachment),
+        filename: attachment.filename,
       })),
     [visual],
   );

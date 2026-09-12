@@ -48,7 +48,7 @@ service InstanceService {
     };
   }
 
-  // Reorganizes local image attachments using the current local filepath template.
+  // Reorganizes all local attachments using the current local filepath template.
   rpc MigrateLocalAttachmentsToTemplate(MigrateLocalAttachmentsToTemplateRequest) returns (MigrateLocalAttachmentsToTemplateResponse) {
     option (google.api.http) = {
       post: "/api/v1/instance/storage:migrateLocalAttachmentsToTemplate"
@@ -271,7 +271,7 @@ message MigrateLocalAttachmentsToTemplateRequest {
 }
 
 message MigrateLocalAttachmentsToTemplateResponse {
-  // The number of local image attachments found before migration.
+  // The number of local attachments found before migration.
   int32 total = 1;
   // The number of attachments whose paths were updated in this request.
   int32 migrated = 2;
