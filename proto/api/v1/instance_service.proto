@@ -48,6 +48,14 @@ service InstanceService {
     };
   }
 
+  // Reorganizes local image attachments using the current local filepath template.
+  rpc MigrateLocalAttachmentsToTemplate(MigrateLocalAttachmentsToTemplateRequest) returns (MigrateLocalAttachmentsToTemplateResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/instance/storage:migrateLocalAttachmentsToTemplate"
+      body: "*"
+    };
+  }
+
   // Vacuums the SQLite database to reclaim unused space after attachment migration.
   rpc VacuumDatabase(VacuumDatabaseRequest) returns (VacuumDatabaseResponse) {
     option (google.api.http) = {
@@ -253,6 +261,26 @@ message MigrateLocalAttachmentsToDatabaseResponse {
   int32 skipped = 3;
   // Human-readable status detail.
   string message = 4;
+}
+
+message MigrateLocalAttachmentsToTemplateRequest {
+  // Optional. Maximum number of attachments to process in this request.
+  int32 batch_size = 1 [(google.api.field_behavior) = OPTIONAL];
+  // Optional. Offset of the first attachment to process.
+  int32 offset = 2 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message MigrateLocalAttachmentsToTemplateResponse {
+  // The number of local image attachments found before migration.
+  int32 total = 1;
+  // The number of attachments whose paths were updated in this request.
+  int32 migrated = 2;
+  // The number of attachments that already used the target path.
+  int32 skipped = 3;
+  // Human-readable status detail.
+  string message = 4;
+  // The offset for the next request, or -1 when all attachments were processed.
+  int32 next_offset = 5;
 }
 
 message VacuumDatabaseRequest {}

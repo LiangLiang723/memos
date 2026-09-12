@@ -395,6 +395,8 @@
       "migrate-attachments-to-database-description": "Move local image attachment files back into the database and delete the migrated local files.",
       "migrate-attachments-to-local-description": "Move database-backed image attachments to the local file system using the current filepath template.",
       "migrating-attachments": "Migrating...",
+      "reorganize-attachments": "Reorganize attachments",
+      "reorganize-attachments-description": "Move existing local image attachments into the folders defined by the current filepath template.",
       "vacuum-database": "Compact database",
       "vacuum-database-description": "Reclaim unused disk space in the SQLite database after attachments have been migrated to local storage.",
       "vacuuming-database": "Compacting...",

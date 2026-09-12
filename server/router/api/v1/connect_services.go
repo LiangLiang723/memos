@@ -55,6 +55,14 @@ func (s *ConnectServiceHandler) MigrateLocalAttachmentsToDatabase(ctx context.Co
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) MigrateLocalAttachmentsToTemplate(ctx context.Context, req *connect.Request[v1pb.MigrateLocalAttachmentsToTemplateRequest]) (*connect.Response[v1pb.MigrateLocalAttachmentsToTemplateResponse], error) {
+	resp, err := s.APIV1Service.MigrateLocalAttachmentsToTemplate(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (s *ConnectServiceHandler) VacuumDatabase(ctx context.Context, req *connect.Request[v1pb.VacuumDatabaseRequest]) (*connect.Response[v1pb.VacuumDatabaseResponse], error) {
 	resp, err := s.APIV1Service.VacuumDatabase(ctx, req.Msg)
 	if err != nil {

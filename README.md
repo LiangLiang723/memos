@@ -1,114 +1,123 @@
-<div align="center">
-  <p>
-    <span>Featured Sponsor:</span>
-    <a href="https://go.warp.dev/memos" target="_blank" rel="noopener">
-      <b>Warp</b>
-      <span>— The AI-powered terminal built for speed and collaboration</span>
-    </a>
-  </p>
-  <a href="https://go.warp.dev/memos" target="_blank" rel="noopener">
-    <img alt="Warp sponsorship" height="196" src="https://raw.githubusercontent.com/warpdotdev/brand-assets/refs/heads/main/Github/Sponsor/Warp-Github-LG-03.png">
-  </a>
-</div>
+# Memos 中文增强版
 
-# Memos
+更适合中国用户的自托管备忘录与碎片记录工具。
 
-<img align="right" height="96px" src="https://raw.githubusercontent.com/usememos/.github/refs/heads/main/assets/logo-rounded.png" alt="Memos" />
+本项目基于 [Memos](https://github.com/usememos/memos) 二次开发，保留轻量、Markdown 原生、自托管和数据自主等特点，并针对中文使用场景进行了调整：
 
-Open-source, self-hosted note-taking tool built for quick capture. Markdown-native, lightweight, and fully yours.
+- 中文界面与本地化体验
+- 更接近朋友圈的时间线浏览体验
+- 列表与瀑布流（Masonry）布局切换
+- 可选的高德地图定位、逆地理编码和附近地点识别
+- 标签、附件、评论、表情反应、RSS 等常用能力
+- 支持 Docker 部署，以及 SQLite、MySQL 和 PostgreSQL
 
-[![Home](https://img.shields.io/badge/🏠-usememos.com-blue?style=flat-square)](https://usememos.com)
-[![Live Demo](https://img.shields.io/badge/✨-Try%20Demo-orange?style=flat-square)](https://demo.usememos.com/)
-[![Docs](https://img.shields.io/badge/📚-Documentation-green?style=flat-square)](https://usememos.com/docs)
-[![Discord](https://img.shields.io/badge/💬-Discord-5865f2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/tfPJa4UmAv)
-[![Docker Pulls](https://img.shields.io/docker/pulls/neosmemo/memos?style=flat-square&logo=docker)](https://hub.docker.com/r/neosmemo/memos)
+> 这是 Memos 的个人增强版本，不是上游官方镜像。上游项目的通用功能、文档和许可证仍请以 [usememos/memos](https://github.com/usememos/memos) 为准；本镜像的功能和标签以本项目为准。
 
-<img src="https://raw.githubusercontent.com/usememos/.github/refs/heads/main/assets/demo.png" alt="Memos Demo Screenshot" height="512" />
+[![Docker Pulls](https://img.shields.io/docker/pulls/benxianyu/memos?style=flat-square&logo=docker)](https://hub.docker.com/r/benxianyu/memos)
+[![Docker Image](https://img.shields.io/badge/Docker-benxianyu%2Fmemos-2496ED?style=flat-square&logo=docker&logoColor=white)](https://hub.docker.com/r/benxianyu/memos)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
-### 💎 Featured Sponsors
+## 界面预览
 
-[**Warp** — The AI-powered terminal built for speed and collaboration](https://go.warp.dev/memos)
+<p align="center">
+  <img src="docs/images/travel-diary-preview.png" alt="朋友圈式时间线与图片九宫格界面预览" width="360" />
+</p>
 
-<a href="https://go.warp.dev/memos" target="_blank" rel="noopener">
-  <img src="https://raw.githubusercontent.com/warpdotdev/brand-assets/refs/heads/main/Logos/Warp-Wordmark-Black.png" alt="Warp - The AI-powered terminal built for speed and collaboration" height="44" />
-</a>
+## 快速开始
 
-<p></p>
-
-[**TestMu AI** - The world’s first full-stack Agentic AI Quality Engineering platform](https://www.testmuai.com/?utm_medium=sponsor&utm_source=memos)
-  
-<a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=memos" target="_blank" rel="noopener">
-  <img src="https://usememos.com/sponsors/testmu.svg" alt="TestMu AI" height="36" />
-</a>
-
-<p></p>
-
-[**SSD Nodes** - Affordable VPS hosting for self-hosters](https://ssdnodes.com/?utm_source=memos&utm_medium=sponsor)
-  
-<a href="https://ssdnodes.com/?utm_source=memos&utm_medium=sponsor" target="_blank" rel="noopener">
-  <img src="https://usememos.com/sponsors/ssd-nodes.svg" alt="SSD Nodes" height="72" />
-</a>
-
-## Features
-
-- **Instant Capture** — Timeline-first UI. Open, write, done — no folders to navigate.
-- **Total Data Ownership** — Self-hosted on your infrastructure. Notes stored in Markdown, always portable. Zero telemetry.
-- **Radical Simplicity** — Single Go binary, ~20MB Docker image. One command to deploy with SQLite, MySQL, or PostgreSQL.
-- **Open & Extensible** — MIT-licensed with full REST and gRPC APIs for integration.
-
-## Quick Start
-
-### Docker (Recommended)
+### Docker
 
 ```bash
 docker run -d \
   --name memos \
+  --restart unless-stopped \
   -p 5230:5230 \
-  -v ~/.memos:/var/opt/memos \
-  neosmemo/memos:stable
+  -v memos-data:/var/opt/memos \
+  benxianyu/memos:stable
 ```
 
-Open `http://localhost:5230` and start writing!
+启动后访问 <http://localhost:5230>。
 
-### Try the Live Demo
+`/var/opt/memos` 是容器内的数据目录，请务必挂载持久化卷。生产环境建议使用版本号标签，以便固定镜像版本；日常更新可以使用 `stable` 标签：
 
-Don't want to install yet? Try our [live demo](https://demo.usememos.com/) first!
+```bash
+docker pull benxianyu/memos:stable
+```
 
-### Other Installation Methods
+### Docker Compose
 
-- **Docker Compose** - Recommended for production deployments
-- **Pre-built Binaries** - Available for Linux, macOS, and Windows
-- **Kubernetes** - Helm charts and manifests available
-- **Build from Source** - For development and customization
+仓库已经提供了可直接使用的 Compose 配置：
 
-See our [installation guide](https://usememos.com/docs/deploy) for detailed instructions.
+```bash
+docker compose -f scripts/compose.yaml up -d
+```
 
-## Contributing
+也可以使用下面的最小配置：
 
-Contributions are welcome — bug reports, feature suggestions, pull requests, documentation, and translations.
+```yaml
+services:
+  memos:
+    image: benxianyu/memos:stable
+    container_name: memos
+    restart: unless-stopped
+    ports:
+      - "5230:5230"
+    volumes:
+      - memos-data:/var/opt/memos
 
-- [Report bugs](https://github.com/usememos/memos/issues/new?template=bug_report.md)
-- [Suggest features](https://github.com/usememos/memos/issues/new?template=feature_request.md)
-- [Submit pull requests](https://github.com/usememos/memos/pulls)
-- [Improve documentation](https://github.com/usememos/dotcom)
-- [Help with translations](https://github.com/usememos/memos/tree/main/web/src/locales)
+volumes:
+  memos-data:
+```
 
-## Sponsors
+## 高德地图
 
-Love Memos? [Sponsor us on GitHub](https://github.com/sponsors/usememos) to help keep the project growing!
+高德地图为可选功能。配置步骤如下：
 
-## Star History
+1. 在[高德开放平台](https://console.amap.com/)创建 Web 服务 Key。
+2. 进入 Memos 的系统设置，打开“地图”设置。
+3. 选择高德地图，填写高德 Web 服务 Key；如果控制台启用了安全密钥，同时填写安全密钥。
+4. 创建备忘录时即可使用位置功能，并进行地点解析和附近地点识别。
 
-[![Star History Chart](https://api.star-history.com/svg?repos=usememos/memos&type=Date)](https://star-history.com/#usememos/memos&Date)
+浏览器定位还需要用户授予定位权限；生产环境建议使用 HTTPS。高德服务的调用次数和使用限制以高德开放平台的规则为准。
 
-## License
+## 数据与升级
 
-Memos is open-source software licensed under the [MIT License](LICENSE). See our [Privacy Policy](https://usememos.com/privacy) for details on data handling.
+- 默认使用 SQLite，数据和附件保存在 `/var/opt/memos`。
+- 升级镜像前请备份 Docker 卷或宿主机数据目录。
+- 不要删除数据卷后再重新创建容器，否则会丢失实例数据。
+- 如果使用外部数据库或对象存储，请同时备份对应的数据库和存储内容。
 
----
+## 从源码运行
 
-**[Website](https://usememos.com)** • **[Documentation](https://usememos.com/docs)** • **[Demo](https://demo.usememos.com/)** • **[Discord](https://discord.gg/tfPJa4UmAv)** • **[X/Twitter](https://x.com/usememos)**
+后端：
 
-<a href="https://vercel.com/oss">
-  <img alt="Vercel OSS Program" src="https://vercel.com/oss/program-badge.svg" />
-</a>
+```bash
+go run ./cmd/memos --port 5230
+```
+
+前端开发环境：
+
+```bash
+cd web
+pnpm install
+pnpm dev
+```
+
+构建发布版本：
+
+```bash
+cd web
+pnpm release
+```
+
+## 项目链接
+
+- [本项目源码](https://github.com/LiangLiang723/memos)
+- [Docker Hub 镜像](https://hub.docker.com/r/benxianyu/memos)
+- [Memos 上游项目](https://github.com/usememos/memos)
+- [Memos 官方文档](https://usememos.com/docs)
+- [Memos 官方演示](https://demo.usememos.com/)
+
+## 许可证
+
+本项目遵循 [MIT License](LICENSE)。本项目基于 Memos 开源项目构建，感谢上游项目及所有贡献者。

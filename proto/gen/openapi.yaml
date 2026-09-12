@@ -507,6 +507,31 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/instance/storage:migrateLocalAttachmentsToTemplate:
+        post:
+            tags:
+                - InstanceService
+            description: Reorganizes local image attachments using the current local filepath template.
+            operationId: InstanceService_MigrateLocalAttachmentsToTemplate
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/MigrateLocalAttachmentsToTemplateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/MigrateLocalAttachmentsToTemplateResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/instance/storage:vacuumDatabase:
         post:
             tags:
@@ -2607,6 +2632,39 @@ components:
                 message:
                     type: string
                     description: Human-readable status detail.
+        MigrateLocalAttachmentsToTemplateRequest:
+            type: object
+            properties:
+                batchSize:
+                    type: integer
+                    description: Optional. Maximum number of attachments to process in this request.
+                    format: int32
+                offset:
+                    type: integer
+                    description: Optional. Offset of the first attachment to process.
+                    format: int32
+        MigrateLocalAttachmentsToTemplateResponse:
+            type: object
+            properties:
+                total:
+                    type: integer
+                    description: The number of local image attachments found before migration.
+                    format: int32
+                migrated:
+                    type: integer
+                    description: The number of attachments whose paths were updated in this request.
+                    format: int32
+                skipped:
+                    type: integer
+                    description: The number of attachments that already used the target path.
+                    format: int32
+                message:
+                    type: string
+                    description: Human-readable status detail.
+                nextOffset:
+                    type: integer
+                    description: The offset for the next request, or -1 when all attachments were processed.
+                    format: int32
         OAuth2Config:
             type: object
             properties:

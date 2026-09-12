@@ -204,13 +204,20 @@ const StorageSection = () => {
     (originalSetting.storageType === InstanceSetting_StorageSetting_StorageType.DATABASE &&
       instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.LOCAL) ||
     (originalSetting.storageType === InstanceSetting_StorageSetting_StorageType.LOCAL &&
-      instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.DATABASE);
+      (instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.DATABASE ||
+        instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.LOCAL));
 
   const migrationDirection =
-    originalSetting.storageType === InstanceSetting_StorageSetting_StorageType.LOCAL &&
-    instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.DATABASE
-      ? "local-to-database"
-      : "database-to-local";
+    originalSetting.storageType === InstanceSetting_StorageSetting_StorageType.DATABASE &&
+    instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.LOCAL
+      ? "database-to-local"
+      : originalSetting.storageType === InstanceSetting_StorageSetting_StorageType.LOCAL &&
+          instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.DATABASE
+        ? "local-to-database"
+        : "local-template";
+
+  const canStartAttachmentMigration =
+    migrationDirection === "local-template" ? instanceStorageSetting.filepathTemplate.length > 0 : allowSaveStorageSetting;
 
   const vacuumDatabase = async () => {
     try {
@@ -244,23 +251,36 @@ const StorageSection = () => {
 
       let total = 0;
       let migrated = 0;
+      let skipped = 0;
+      let offset = 0;
       while (true) {
         const response =
           migrationDirection === "local-to-database"
             ? await instanceServiceClient.migrateLocalAttachmentsToDatabase({ batchSize: ATTACHMENT_MIGRATION_BATCH_SIZE })
-            : await instanceServiceClient.migrateDatabaseAttachmentsToLocal({ batchSize: ATTACHMENT_MIGRATION_BATCH_SIZE });
+            : migrationDirection === "local-template"
+              ? await instanceServiceClient.migrateLocalAttachmentsToTemplate({
+                  batchSize: ATTACHMENT_MIGRATION_BATCH_SIZE,
+                  offset,
+                })
+              : await instanceServiceClient.migrateDatabaseAttachmentsToLocal({ batchSize: ATTACHMENT_MIGRATION_BATCH_SIZE });
         if (total === 0) {
           total = response.total;
         }
         migrated += response.migrated;
+        skipped += response.skipped;
         toast.loading(
           t("setting.storage-section.migrate-attachments-progress", {
-            migrated,
+            migrated: migrated + skipped,
             total,
           }),
           { id: toastId },
         );
-        if (response.migrated === 0 || migrated >= total) {
+        if (migrationDirection === "local-template") {
+          if (!("nextOffset" in response) || response.nextOffset < 0) {
+            break;
+          }
+          offset = response.nextOffset;
+        } else if (response.migrated === 0 || migrated >= total) {
           break;
         }
       }
@@ -327,17 +347,25 @@ const StorageSection = () => {
 
         {shouldShowAttachmentMigration && (
           <SettingRow
-            label={t("setting.storage-section.migrate-attachments")}
+            label={
+              migrationDirection === "local-template"
+                ? t("setting.storage-section.reorganize-attachments")
+                : t("setting.storage-section.migrate-attachments")
+            }
             description={
               migrationDirection === "local-to-database"
                 ? t("setting.storage-section.migrate-attachments-to-database-description")
-                : t("setting.storage-section.migrate-attachments-to-local-description")
+                : migrationDirection === "local-template"
+                  ? t("setting.storage-section.reorganize-attachments-description")
+                  : t("setting.storage-section.migrate-attachments-to-local-description")
             }
           >
-            <Button variant="outline" disabled={!allowSaveStorageSetting || isMigratingAttachments} onClick={migrateAttachments}>
+            <Button variant="outline" disabled={!canStartAttachmentMigration || isMigratingAttachments} onClick={migrateAttachments}>
               {isMigratingAttachments
                 ? t("setting.storage-section.migrating-attachments")
-                : t("setting.storage-section.migrate-attachments")}
+                : migrationDirection === "local-template"
+                  ? t("setting.storage-section.reorganize-attachments")
+                  : t("setting.storage-section.migrate-attachments")}
             </Button>
           </SettingRow>
         )}
@@ -348,9 +376,7 @@ const StorageSection = () => {
             description={t("setting.storage-section.vacuum-database-description")}
           >
             <Button variant="outline" disabled={isVacuumingDatabase} onClick={vacuumDatabase}>
-              {isVacuumingDatabase
-                ? t("setting.storage-section.vacuuming-database")
-                : t("setting.storage-section.vacuum-database")}
+              {isVacuumingDatabase ? t("setting.storage-section.vacuuming-database") : t("setting.storage-section.vacuum-database")}
             </Button>
           </SettingRow>
         )}

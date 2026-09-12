@@ -48,6 +48,9 @@ const (
 	// InstanceServiceMigrateLocalAttachmentsToDatabaseProcedure is the fully-qualified name of the
 	// InstanceService's MigrateLocalAttachmentsToDatabase RPC.
 	InstanceServiceMigrateLocalAttachmentsToDatabaseProcedure = "/memos.api.v1.InstanceService/MigrateLocalAttachmentsToDatabase"
+	// InstanceServiceMigrateLocalAttachmentsToTemplateProcedure is the fully-qualified name of the
+	// InstanceService's MigrateLocalAttachmentsToTemplate RPC.
+	InstanceServiceMigrateLocalAttachmentsToTemplateProcedure = "/memos.api.v1.InstanceService/MigrateLocalAttachmentsToTemplate"
 	// InstanceServiceVacuumDatabaseProcedure is the fully-qualified name of the InstanceService's
 	// VacuumDatabase RPC.
 	InstanceServiceVacuumDatabaseProcedure = "/memos.api.v1.InstanceService/VacuumDatabase"
@@ -65,6 +68,8 @@ type InstanceServiceClient interface {
 	MigrateDatabaseAttachmentsToLocal(context.Context, *connect.Request[v1.MigrateDatabaseAttachmentsToLocalRequest]) (*connect.Response[v1.MigrateDatabaseAttachmentsToLocalResponse], error)
 	// Migrates local file system image attachments back to the database.
 	MigrateLocalAttachmentsToDatabase(context.Context, *connect.Request[v1.MigrateLocalAttachmentsToDatabaseRequest]) (*connect.Response[v1.MigrateLocalAttachmentsToDatabaseResponse], error)
+	// Reorganizes local image attachments using the current local filepath template.
+	MigrateLocalAttachmentsToTemplate(context.Context, *connect.Request[v1.MigrateLocalAttachmentsToTemplateRequest]) (*connect.Response[v1.MigrateLocalAttachmentsToTemplateResponse], error)
 	// Vacuums the SQLite database to reclaim unused space after attachment migration.
 	VacuumDatabase(context.Context, *connect.Request[v1.VacuumDatabaseRequest]) (*connect.Response[v1.VacuumDatabaseResponse], error)
 }
@@ -110,6 +115,12 @@ func NewInstanceServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(instanceServiceMethods.ByName("MigrateLocalAttachmentsToDatabase")),
 			connect.WithClientOptions(opts...),
 		),
+		migrateLocalAttachmentsToTemplate: connect.NewClient[v1.MigrateLocalAttachmentsToTemplateRequest, v1.MigrateLocalAttachmentsToTemplateResponse](
+			httpClient,
+			baseURL+InstanceServiceMigrateLocalAttachmentsToTemplateProcedure,
+			connect.WithSchema(instanceServiceMethods.ByName("MigrateLocalAttachmentsToTemplate")),
+			connect.WithClientOptions(opts...),
+		),
 		vacuumDatabase: connect.NewClient[v1.VacuumDatabaseRequest, v1.VacuumDatabaseResponse](
 			httpClient,
 			baseURL+InstanceServiceVacuumDatabaseProcedure,
@@ -126,6 +137,7 @@ type instanceServiceClient struct {
 	updateInstanceSetting             *connect.Client[v1.UpdateInstanceSettingRequest, v1.InstanceSetting]
 	migrateDatabaseAttachmentsToLocal *connect.Client[v1.MigrateDatabaseAttachmentsToLocalRequest, v1.MigrateDatabaseAttachmentsToLocalResponse]
 	migrateLocalAttachmentsToDatabase *connect.Client[v1.MigrateLocalAttachmentsToDatabaseRequest, v1.MigrateLocalAttachmentsToDatabaseResponse]
+	migrateLocalAttachmentsToTemplate *connect.Client[v1.MigrateLocalAttachmentsToTemplateRequest, v1.MigrateLocalAttachmentsToTemplateResponse]
 	vacuumDatabase                    *connect.Client[v1.VacuumDatabaseRequest, v1.VacuumDatabaseResponse]
 }
 
@@ -156,6 +168,12 @@ func (c *instanceServiceClient) MigrateLocalAttachmentsToDatabase(ctx context.Co
 	return c.migrateLocalAttachmentsToDatabase.CallUnary(ctx, req)
 }
 
+// MigrateLocalAttachmentsToTemplate calls
+// memos.api.v1.InstanceService.MigrateLocalAttachmentsToTemplate.
+func (c *instanceServiceClient) MigrateLocalAttachmentsToTemplate(ctx context.Context, req *connect.Request[v1.MigrateLocalAttachmentsToTemplateRequest]) (*connect.Response[v1.MigrateLocalAttachmentsToTemplateResponse], error) {
+	return c.migrateLocalAttachmentsToTemplate.CallUnary(ctx, req)
+}
+
 // VacuumDatabase calls memos.api.v1.InstanceService.VacuumDatabase.
 func (c *instanceServiceClient) VacuumDatabase(ctx context.Context, req *connect.Request[v1.VacuumDatabaseRequest]) (*connect.Response[v1.VacuumDatabaseResponse], error) {
 	return c.vacuumDatabase.CallUnary(ctx, req)
@@ -173,6 +191,8 @@ type InstanceServiceHandler interface {
 	MigrateDatabaseAttachmentsToLocal(context.Context, *connect.Request[v1.MigrateDatabaseAttachmentsToLocalRequest]) (*connect.Response[v1.MigrateDatabaseAttachmentsToLocalResponse], error)
 	// Migrates local file system image attachments back to the database.
 	MigrateLocalAttachmentsToDatabase(context.Context, *connect.Request[v1.MigrateLocalAttachmentsToDatabaseRequest]) (*connect.Response[v1.MigrateLocalAttachmentsToDatabaseResponse], error)
+	// Reorganizes local image attachments using the current local filepath template.
+	MigrateLocalAttachmentsToTemplate(context.Context, *connect.Request[v1.MigrateLocalAttachmentsToTemplateRequest]) (*connect.Response[v1.MigrateLocalAttachmentsToTemplateResponse], error)
 	// Vacuums the SQLite database to reclaim unused space after attachment migration.
 	VacuumDatabase(context.Context, *connect.Request[v1.VacuumDatabaseRequest]) (*connect.Response[v1.VacuumDatabaseResponse], error)
 }
@@ -214,6 +234,12 @@ func NewInstanceServiceHandler(svc InstanceServiceHandler, opts ...connect.Handl
 		connect.WithSchema(instanceServiceMethods.ByName("MigrateLocalAttachmentsToDatabase")),
 		connect.WithHandlerOptions(opts...),
 	)
+	instanceServiceMigrateLocalAttachmentsToTemplateHandler := connect.NewUnaryHandler(
+		InstanceServiceMigrateLocalAttachmentsToTemplateProcedure,
+		svc.MigrateLocalAttachmentsToTemplate,
+		connect.WithSchema(instanceServiceMethods.ByName("MigrateLocalAttachmentsToTemplate")),
+		connect.WithHandlerOptions(opts...),
+	)
 	instanceServiceVacuumDatabaseHandler := connect.NewUnaryHandler(
 		InstanceServiceVacuumDatabaseProcedure,
 		svc.VacuumDatabase,
@@ -232,6 +258,8 @@ func NewInstanceServiceHandler(svc InstanceServiceHandler, opts ...connect.Handl
 			instanceServiceMigrateDatabaseAttachmentsToLocalHandler.ServeHTTP(w, r)
 		case InstanceServiceMigrateLocalAttachmentsToDatabaseProcedure:
 			instanceServiceMigrateLocalAttachmentsToDatabaseHandler.ServeHTTP(w, r)
+		case InstanceServiceMigrateLocalAttachmentsToTemplateProcedure:
+			instanceServiceMigrateLocalAttachmentsToTemplateHandler.ServeHTTP(w, r)
 		case InstanceServiceVacuumDatabaseProcedure:
 			instanceServiceVacuumDatabaseHandler.ServeHTTP(w, r)
 		default:
@@ -261,6 +289,10 @@ func (UnimplementedInstanceServiceHandler) MigrateDatabaseAttachmentsToLocal(con
 
 func (UnimplementedInstanceServiceHandler) MigrateLocalAttachmentsToDatabase(context.Context, *connect.Request[v1.MigrateLocalAttachmentsToDatabaseRequest]) (*connect.Response[v1.MigrateLocalAttachmentsToDatabaseResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.InstanceService.MigrateLocalAttachmentsToDatabase is not implemented"))
+}
+
+func (UnimplementedInstanceServiceHandler) MigrateLocalAttachmentsToTemplate(context.Context, *connect.Request[v1.MigrateLocalAttachmentsToTemplateRequest]) (*connect.Response[v1.MigrateLocalAttachmentsToTemplateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.InstanceService.MigrateLocalAttachmentsToTemplate is not implemented"))
 }
 
 func (UnimplementedInstanceServiceHandler) VacuumDatabase(context.Context, *connect.Request[v1.VacuumDatabaseRequest]) (*connect.Response[v1.VacuumDatabaseResponse], error) {
