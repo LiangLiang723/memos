@@ -32,5 +32,5 @@
     "refs/tags/v1.2.8"
   ],
   "encrypted_backup_sha256": "92f5e40be2c52c032d87900bd26c0fdf19fbd81ded2ff763dc5d0fc721b27b99",
-  "published": false
+  "published": true
 }
